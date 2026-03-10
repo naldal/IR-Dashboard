@@ -263,10 +263,11 @@ export default function Dashboard() {
                     {stock.sectorData.map((entry, index) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={entry.등락률 >= 0 ? '#ef4444' : '#3b82f6'}
-                        fillOpacity={entry.name === '위메이드' ? 1 : 0.35}
-                        stroke={entry.name === '위메이드' ? '#991b1b' : 'none'}
-                        strokeWidth={entry.name === '위메이드' ? 2 : 0}
+                        fill={
+                          entry.name === '위메이드'
+                            ? entry.등락률 >= 0 ? '#ef4444' : '#3b82f6'
+                            : '#d1d5db'
+                        }
                       />
                     ))}
                   </Bar>
@@ -308,17 +309,17 @@ export default function Dashboard() {
                   />
                   <Bar dataKey="외국인" fill="#ef4444">
                     {stock.investorData.map((entry, i) => (
-                      <Cell key={i} fill="#ef4444" fillOpacity={entry.name === '위메이드' ? 1 : 0.35} />
+                      <Cell key={i} fill={entry.name === '위메이드' ? '#ef4444' : '#d1d5db'} />
                     ))}
                   </Bar>
                   <Bar dataKey="기관" fill="#f59e0b">
                     {stock.investorData.map((entry, i) => (
-                      <Cell key={i} fill="#f59e0b" fillOpacity={entry.name === '위메이드' ? 1 : 0.35} />
+                      <Cell key={i} fill={entry.name === '위메이드' ? '#f59e0b' : '#d1d5db'} />
                     ))}
                   </Bar>
                   <Bar dataKey="개인" fill="#3b82f6">
                     {stock.investorData.map((entry, i) => (
-                      <Cell key={i} fill="#3b82f6" fillOpacity={entry.name === '위메이드' ? 1 : 0.35} />
+                      <Cell key={i} fill={entry.name === '위메이드' ? '#3b82f6' : '#d1d5db'} />
                     ))}
                   </Bar>
                 </BarChart>
