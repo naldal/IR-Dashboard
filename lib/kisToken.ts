@@ -16,9 +16,9 @@ export function getKisConfig() {
   }
 
   return {
-    appKey,
-    appSecret,
-    baseUrl,
+    appKey: appKey!,
+    appSecret: appSecret!,
+    baseUrl: baseUrl!,
   };
 }
 
@@ -40,12 +40,35 @@ export async function getKisToken(): Promise<string> {
     }),
   });
 
-  if (!res.ok) throw new Error(`KIS token error: ${res.status}`);
+  const text = await res.text();
+  let data: Record<string, unknown> = {};
 
-  const data = await res.json();
+  try {
+    data = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+  } catch {
+    data = {};
+  }
+
+  if (!res.ok) {
+    const detail = [
+      typeof data.msg_cd === 'string' ? data.msg_cd : null,
+      typeof data.msg1 === 'string' ? data.msg1 : null,
+      !data.msg_cd && !data.msg1 && text ? text : null,
+    ]
+      .filter(Boolean)
+      .join(' ');
+
+    throw new Error(`KIS token error: ${res.status}${detail ? ` - ${detail}` : ''}`);
+  }
+
   cachedToken = {
-    token: data.access_token,
-    expiresAt: now + data.expires_in * 1000,
+    token: String(data.access_token ?? ''),
+    expiresAt: now + Number(data.expires_in ?? 0) * 1000,
   };
+
+  if (!cachedToken.token) {
+    throw new Error('KIS token error: empty access_token');
+  }
+
   return cachedToken.token;
 }

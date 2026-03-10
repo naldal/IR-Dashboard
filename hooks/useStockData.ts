@@ -61,6 +61,18 @@ interface ExchangeResponse {
   error?: string;
 }
 
+interface DashboardQuickResponse {
+  price?: PriceResponse;
+  index?: IndexResponse;
+  error?: string;
+}
+
+interface DashboardFullResponse extends DashboardQuickResponse {
+  investor?: InvestorEntry[];
+  sector?: SectorEntry[];
+  chart?: ChartPoint[];
+}
+
 function checkMarketOpen(): boolean {
   const now = new Date();
   const day = now.getDay(); // 0=일, 6=토
@@ -116,17 +128,17 @@ const INITIAL_STATE: Omit<StockState, 'refresh'> = {
 export function useStockData(): StockState {
   const [state, setState] = useState<Omit<StockState, 'refresh'>>(INITIAL_STATE);
 
-  // 5초 폴링: 가격/지수/환율만 + 차트 마지막 포인트 시가총액 갱신
+  // 5초 폴링: KIS 대시보드 요약 + 환율
   const fetchQuick = useCallback(async () => {
-    const [priceResult, indexResult, exchangeResult] = await Promise.allSettled([
-      fetchJson<PriceResponse>('/api/stock/price'),
-      fetchJson<IndexResponse>('/api/stock/index'),
+    const [dashboardResult, exchangeResult] = await Promise.allSettled([
+      fetchJson<DashboardQuickResponse>('/api/stock/dashboard?mode=quick'),
       fetchJson<ExchangeResponse>('/api/stock/exchange'),
     ]);
 
     setState((prev) => {
-      const price = priceResult.status === 'fulfilled' ? priceResult.value : null;
-      const index = indexResult.status === 'fulfilled' ? indexResult.value : null;
+      const dashboard = dashboardResult.status === 'fulfilled' ? dashboardResult.value : null;
+      const price = dashboard?.price ?? null;
+      const index = dashboard?.index ?? null;
       const exchange = exchangeResult.status === 'fulfilled' ? exchangeResult.value : null;
       const newMarketCap = Number(price?.marketCap ?? 0);
       const updatedChart =
@@ -136,7 +148,7 @@ export function useStockData(): StockState {
               { ...prev.chartHistory[prev.chartHistory.length - 1], 시가총액: newMarketCap },
             ]
           : prev.chartHistory;
-      const errorMessage = getErrorMessage([priceResult, indexResult, exchangeResult]);
+      const errorMessage = getErrorMessage([dashboardResult, exchangeResult]);
 
       return {
         ...prev,
@@ -151,8 +163,7 @@ export function useStockData(): StockState {
         exchangeChange: exchange?.change ?? prev.exchangeChange,
         chartHistory: updatedChart,
         lastUpdated:
-          priceResult.status === 'fulfilled' ||
-          indexResult.status === 'fulfilled' ||
+          dashboardResult.status === 'fulfilled' ||
           exchangeResult.status === 'fulfilled'
             ? new Date()
             : prev.lastUpdated,
@@ -162,56 +173,51 @@ export function useStockData(): StockState {
     });
   }, []);
 
-  // 최초 + 5분마다: 전체 데이터 (섹터, 투자자, 차트 포함)
+  // 최초 + 5분마다: 전체 데이터 (KIS 대시보드 + 환율)
   const fetchFull = useCallback(async () => {
     setState((prev) => ({ ...prev, isLoading: true, isChartLoading: true, error: null }));
-    const [priceResult, indexResult, exchangeResult, investorResult, sectorResult, chartResult] =
+    const [dashboardResult, exchangeResult] =
       await Promise.allSettled([
-        fetchJson<PriceResponse>('/api/stock/price'),
-        fetchJson<IndexResponse>('/api/stock/index'),
+        fetchJson<DashboardFullResponse>('/api/stock/dashboard'),
         fetchJson<ExchangeResponse>('/api/stock/exchange'),
-        fetchJson<InvestorEntry[]>('/api/stock/investor'),
-        fetchJson<SectorEntry[]>('/api/stock/sector'),
-        fetchJson<ChartPoint[]>('/api/stock/chart'),
       ]);
+
+    const dashboard = dashboardResult.status === 'fulfilled' ? dashboardResult.value : null;
+    const price = dashboard?.price ?? null;
+    const index = dashboard?.index ?? null;
 
     setState((prev) => ({
       ...prev,
-      price: priceResult.status === 'fulfilled' ? priceResult.value.price ?? prev.price : prev.price,
-      priceChange: priceResult.status === 'fulfilled' ? priceResult.value.change ?? prev.priceChange : prev.priceChange,
-      changeRate: priceResult.status === 'fulfilled' ? priceResult.value.changeRate ?? prev.changeRate : prev.changeRate,
-      marketCap: priceResult.status === 'fulfilled' ? priceResult.value.marketCap ?? prev.marketCap : prev.marketCap,
-      volume: priceResult.status === 'fulfilled' ? priceResult.value.volume ?? prev.volume : prev.volume,
-      kospi: indexResult.status === 'fulfilled' ? indexResult.value.kospi ?? prev.kospi : prev.kospi,
-      kosdaq: indexResult.status === 'fulfilled' ? indexResult.value.kosdaq ?? prev.kosdaq : prev.kosdaq,
+      price: price?.price ?? prev.price,
+      priceChange: price?.change ?? prev.priceChange,
+      changeRate: price?.changeRate ?? prev.changeRate,
+      marketCap: price?.marketCap ?? prev.marketCap,
+      volume: price?.volume ?? prev.volume,
+      kospi: index?.kospi ?? prev.kospi,
+      kosdaq: index?.kosdaq ?? prev.kosdaq,
       exchangeRate:
         exchangeResult.status === 'fulfilled' ? exchangeResult.value.rate ?? prev.exchangeRate : prev.exchangeRate,
       exchangeChange:
         exchangeResult.status === 'fulfilled' ? exchangeResult.value.change ?? prev.exchangeChange : prev.exchangeChange,
       sectorData:
-        sectorResult.status === 'fulfilled' && Array.isArray(sectorResult.value)
-          ? sectorResult.value
+        dashboardResult.status === 'fulfilled' && Array.isArray(dashboard?.sector)
+          ? dashboard.sector
           : prev.sectorData,
       investorData:
-        investorResult.status === 'fulfilled' && Array.isArray(investorResult.value)
-          ? investorResult.value
+        dashboardResult.status === 'fulfilled' && Array.isArray(dashboard?.investor)
+          ? dashboard.investor
           : prev.investorData,
       chartHistory:
-        chartResult.status === 'fulfilled' && Array.isArray(chartResult.value)
-          ? chartResult.value
+        dashboardResult.status === 'fulfilled' && Array.isArray(dashboard?.chart)
+          ? dashboard.chart
           : prev.chartHistory,
       lastUpdated:
-        priceResult.status === 'fulfilled' ||
-        indexResult.status === 'fulfilled' ||
-        exchangeResult.status === 'fulfilled' ||
-        investorResult.status === 'fulfilled' ||
-        sectorResult.status === 'fulfilled' ||
-        chartResult.status === 'fulfilled'
+        dashboardResult.status === 'fulfilled' || exchangeResult.status === 'fulfilled'
           ? new Date()
           : prev.lastUpdated,
       isLoading: false,
       isChartLoading: false,
-      error: getErrorMessage([priceResult, indexResult, exchangeResult, investorResult, sectorResult, chartResult]),
+      error: getErrorMessage([dashboardResult, exchangeResult]),
     }));
   }, []);
 
