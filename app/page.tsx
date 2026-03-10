@@ -1,5 +1,5 @@
 "use client";
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -51,6 +51,47 @@ const ChartTooltip = ({ active, payload, label, valueFormatter }: any) => {
 function isUp(changeRate: string): boolean {
   const n = parseFloat(changeRate);
   return !isNaN(n) && n >= 0;
+}
+
+function useFlash(value: string) {
+  const [active, setActive] = useState(false);
+  const prevRef = useRef(value);
+  useEffect(() => {
+    if (prevRef.current !== value && value !== '-') {
+      setActive(true);
+      const id = setTimeout(() => setActive(false), 700);
+      prevRef.current = value;
+      return () => clearTimeout(id);
+    }
+    prevRef.current = value;
+  }, [value]);
+  return active;
+}
+
+interface CardProps {
+  title: string; value: string; change: string;
+  icon: React.ElementType; up: boolean; isLoading: boolean; delay: number;
+}
+function StatCard({ title, value, change, icon: Icon, up, isLoading, delay }: CardProps) {
+  const flashing = useFlash(value);
+  return (
+    <div
+      className={`card-enter bg-white p-6 rounded-2xl shadow-md border border-gray-200 flex flex-col ${flashing ? (up ? 'flash-up' : 'flash-down') : ''}`}
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-bold text-gray-600">{title}</h3>
+        <Icon className="h-6 w-6 text-gray-400" />
+      </div>
+      <div className={`text-3xl font-extrabold text-gray-900 ${isLoading ? 'animate-pulse' : ''}`}>
+        {value}
+      </div>
+      <div className={`text-base font-bold mt-3 flex items-center ${up ? 'text-red-600' : 'text-blue-600'}`}>
+        {up ? <ArrowUpRight className="h-5 w-5 mr-1" strokeWidth={3} /> : <ArrowDownRight className="h-5 w-5 mr-1" strokeWidth={3} />}
+        {change}
+      </div>
+    </div>
+  );
 }
 
 export default function Dashboard() {
@@ -136,22 +177,7 @@ export default function Dashboard() {
       {/* 상단 카드뷰 */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-5 mb-10">
         {cards.map((card, index) => (
-          <div key={index} className="bg-white p-6 rounded-2xl shadow-md border border-gray-200 flex flex-col">
-            <div className="flex justify-between items-center mb-4">
-              {/* 카드 타이틀 글씨 크기 및 진하기 증가 */}
-              <h3 className="text-lg font-bold text-gray-600">{card.title}</h3>
-              <card.icon className="h-6 w-6 text-gray-400" />
-            </div>
-            {/* 카드 메인 수치 글씨 크기 대폭 증가 */}
-            <div className={`text-3xl font-extrabold text-gray-900 ${stock.isLoading ? 'animate-pulse' : ''}`}>
-              {card.value}
-            </div>
-            {/* 등락률 글씨 크기 증가 */}
-            <div className={`text-base font-bold mt-3 flex items-center ${card.up ? 'text-red-600' : 'text-blue-600'}`}>
-              {card.up ? <ArrowUpRight className="h-5 w-5 mr-1" strokeWidth={3} /> : <ArrowDownRight className="h-5 w-5 mr-1" strokeWidth={3} />}
-              {card.change}
-            </div>
-          </div>
+          <StatCard key={index} {...card} isLoading={stock.isLoading} delay={index * 80} />
         ))}
       </div>
 
@@ -165,7 +191,7 @@ export default function Dashboard() {
         ) : (
           <>
             {/* 1. 시총 차트 */}
-            <div className="bg-white p-7 rounded-2xl shadow-md border border-gray-200">
+            <div className="chart-enter bg-white p-7 rounded-2xl shadow-md border border-gray-200" style={{ animationDelay: '0ms' }}>
               <h3 className="text-xl font-bold text-gray-800 tracking-tight mb-2">1. 시가총액 추이</h3>
               <p className="text-sm font-medium text-gray-500 mb-6">단위: 억원</p>
               <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
@@ -200,7 +226,12 @@ export default function Dashboard() {
                       if (!stock.isMarketOpen) return <g key={props.key} />;
                       const last = stock.chartHistory.length - 1;
                       if (props.index !== last) return <g key={props.key} />;
-                      return <circle key={props.key} cx={props.cx} cy={props.cy} r={5} fill="#ef4444" stroke="white" strokeWidth={2} />;
+                      return (
+                        <g key={props.key}>
+                          <circle cx={props.cx} cy={props.cy} r={9} fill="#ef4444" className="live-dot-pulse" />
+                          <circle cx={props.cx} cy={props.cy} r={5} fill="#ef4444" stroke="white" strokeWidth={2} />
+                        </g>
+                      );
                     }}
                     activeDot={{ r: 6, fill: '#ef4444', strokeWidth: 3, stroke: 'white' }}
                   />
@@ -209,7 +240,7 @@ export default function Dashboard() {
             </div>
 
             {/* 2. 거래량 차트 */}
-            <div className="bg-white p-7 rounded-2xl shadow-md border border-gray-200">
+            <div className="chart-enter bg-white p-7 rounded-2xl shadow-md border border-gray-200" style={{ animationDelay: '100ms' }}>
               <h3 className="text-xl font-bold text-gray-800 tracking-tight mb-2">2. 거래량 추이</h3>
               <p className="text-sm font-medium text-gray-500 mb-6">단위: 주 (구간 합산)</p>
               <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
@@ -243,7 +274,12 @@ export default function Dashboard() {
                       if (!stock.isMarketOpen) return <g key={props.key} />;
                       const last = stock.chartHistory.length - 1;
                       if (props.index !== last) return <g key={props.key} />;
-                      return <circle key={props.key} cx={props.cx} cy={props.cy} r={5} fill="#3b82f6" stroke="white" strokeWidth={2} />;
+                      return (
+                        <g key={props.key}>
+                          <circle cx={props.cx} cy={props.cy} r={9} fill="#3b82f6" className="live-dot-pulse" />
+                          <circle cx={props.cx} cy={props.cy} r={5} fill="#3b82f6" stroke="white" strokeWidth={2} />
+                        </g>
+                      );
                     }}
                     activeDot={{ r: 6, fill: '#3b82f6', strokeWidth: 3, stroke: 'white' }}
                   />
@@ -252,7 +288,7 @@ export default function Dashboard() {
             </div>
 
             {/* 3. 등락률 */}
-            <div className="bg-white p-7 rounded-2xl shadow-md border border-gray-200">
+            <div className="chart-enter bg-white p-7 rounded-2xl shadow-md border border-gray-200" style={{ animationDelay: '200ms' }}>
               <h3 className="text-xl font-bold text-gray-800 tracking-tight mb-2">3. 주요 게임사 등락률</h3>
               <p className="text-sm font-medium text-gray-500 mb-6">단위: %</p>
               <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
@@ -294,7 +330,7 @@ export default function Dashboard() {
             </div>
 
             {/* 4. 투자자별 순매매 */}
-            <div className="bg-white p-7 rounded-2xl shadow-md border border-gray-200">
+            <div className="chart-enter bg-white p-7 rounded-2xl shadow-md border border-gray-200" style={{ animationDelay: '300ms' }}>
               <h3 className="text-xl font-bold text-gray-800 tracking-tight mb-2">4. 투자자별 순매매 동향</h3>
               <p className="text-sm font-medium text-gray-500 mb-6">단위: 백만원</p>
               <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
@@ -333,6 +369,8 @@ export default function Dashboard() {
         )}
 
       </div>
+
+      <p className="mt-10 text-center text-xs text-gray-400">위메이드 송하민</p>
     </div>
   );
 }
