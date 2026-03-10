@@ -440,7 +440,7 @@ export default function Dashboard() {
                       width={96}
                     />
                     <ReferenceLine x={0} stroke={refLineColor} strokeWidth={2} />
-                    <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v > 0 ? '+' : ''}${v}%`} />} cursor={cursorFill} />
+                    <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v > 0 ? '+' : ''}${v}%`} />} cursor={{ fill: cursorFill }} />
                     <Bar dataKey="등락률" radius={[0, 3, 3, 0]}>
                       {stock.sectorData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.등락률 >= 0 ? '#ef4444' : '#3b82f6'} />
@@ -493,7 +493,7 @@ export default function Dashboard() {
                       width={96}
                     />
                     <ReferenceLine x={0} stroke={refLineColor} strokeWidth={2} />
-                    <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v.toLocaleString()}백만`} />} cursor={cursorFill} />
+                    <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v.toLocaleString()}백만`} />} cursor={{ fill: cursorFill }} />
                     <Legend wrapperStyle={{ fontSize: 13, paddingTop: 10 }} formatter={(value) => <span style={{ color: dark ? '#94a3b8' : '#4b5563', fontWeight: 700 }}>{value}</span>} />
                     <Bar dataKey="외국인" fill="#ef4444" fillOpacity={0.9} radius={[0, 3, 3, 0]} />
                     <Bar dataKey="기관" fill="#f59e0b" fillOpacity={0.9} radius={[0, 3, 3, 0]} />
