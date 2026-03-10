@@ -15,6 +15,14 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "IR실 증시 대시보드",
   description: "위메이드 및 주요 게임사 증시 현황 대시보드",
+  openGraph: {
+    title: "📊 IR실 증시 대시보드",
+    description: "위메이드 및 주요 게임사 증시 현황 및 투자자별 매매 동향",
+    url: "https://ir-dashboard-zeta.vercel.app", // 배포된 본인의 Vercel 주소
+    siteName: "IR Dashboard",
+    locale: "ko_KR",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
