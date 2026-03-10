@@ -69,7 +69,7 @@ const ChartTooltip = ({ active, payload, label, valueFormatter }: any) => {
 export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-50 p-6 md:p-10 font-sans">
-      <h1 className="text-4xl font-extrabold text-gray-900 mb-10 tracking-tight">📊 IR실 증시 Dashboard</h1>
+      <h1 className="text-4xl font-extrabold text-gray-900 mb-10 tracking-tight">📈 [Live] IR실 증시 Dashboard v1.1</h1>
 
       {/* 상단 카드뷰 */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-5 mb-10">
