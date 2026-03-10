@@ -75,22 +75,28 @@ export async function GET() {
       })
       .reverse();
 
-    // 최대 30구간으로 집계 (구간 내 거래량 합산, 마지막 가격으로 시총 계산)
-    const groupSize = Math.max(1, Math.floor(sorted.length / 30));
-    const result = [];
-    for (let i = 0; i < sorted.length; i += groupSize) {
-      const group = sorted.slice(i, i + groupSize);
-      const last = group[group.length - 1];
-      const volSum = group.reduce((sum, p) => sum + Number(p.cntg_vol), 0);
-      result.push({
-        time: `${last.stck_cntg_hour.slice(0, 2)}:${last.stck_cntg_hour.slice(2, 4)}`,
-        시가총액:
-          sharesOut > 0
-            ? Math.round((Number(last.stck_prpr) * sharesOut) / 100_000_000)
-            : 0,
-        거래량: volSum,
-      });
+    // 30분 단위 버킷으로 집계 (09:00, 09:30, 10:00 ... 15:30)
+    const buckets = new Map<string, { price: number; volSum: number }>();
+    for (const p of sorted) {
+      const hh = p.stck_cntg_hour.slice(0, 2);
+      const mm = parseInt(p.stck_cntg_hour.slice(2, 4));
+      const key = `${hh}:${mm < 30 ? '00' : '30'}`;
+      const entry = buckets.get(key);
+      if (entry) {
+        entry.price = Number(p.stck_prpr); // 구간 내 마지막 가격
+        entry.volSum += Number(p.cntg_vol);
+      } else {
+        buckets.set(key, { price: Number(p.stck_prpr), volSum: Number(p.cntg_vol) });
+      }
     }
+
+    const result = Array.from(buckets.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([time, { price, volSum }]) => ({
+        time,
+        시가총액: sharesOut > 0 ? Math.round((price * sharesOut) / 100_000_000) : 0,
+        거래량: volSum,
+      }));
 
     return NextResponse.json(result);
   } catch {

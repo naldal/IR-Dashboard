@@ -92,7 +92,13 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-50 p-6 md:p-10 font-sans">
       <div className="flex items-center justify-between mb-10">
-        <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">📈 [Live] IR실 증시 Dashboard v1.1</h1>
+        <div className="flex items-center gap-4">
+          <div className="relative flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+            <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500"></span>
+          </div>
+          <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">IR실 증시 Dashboard</h1>
+        </div>
         <div className="flex items-center gap-4">
           {stock.lastUpdated && (
             <p className="text-sm text-gray-400 font-medium">
