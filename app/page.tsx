@@ -226,7 +226,7 @@ export default function Dashboard() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid {...gridStyle} vertical={false} />
-                  <XAxis dataKey="time" tick={axisStyle} axisLine={false} tickLine={false} dy={10} />
+                  <XAxis dataKey="time" tick={axisStyle} axisLine={false} tickLine={false} dy={10} padding={{ left: 20, right: 20 }} />
                   <YAxis domain={['auto', 'auto']} tick={axisStyle} axisLine={false} tickLine={false} width={65} tickFormatter={v => v.toLocaleString()} />
                   <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v.toLocaleString()}억`} />} cursor={{ stroke: '#ef4444', strokeWidth: 2, strokeDasharray: '4 4' }} />
                   <Area type="monotone" dataKey="시가총액" stroke="#ef4444" strokeWidth={3} fill="url(#gradMarketCap)"
@@ -259,7 +259,7 @@ export default function Dashboard() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid {...gridStyle} vertical={false} />
-                  <XAxis dataKey="time" tick={axisStyle} axisLine={false} tickLine={false} dy={10} />
+                  <XAxis dataKey="time" tick={axisStyle} axisLine={false} tickLine={false} dy={10} padding={{ left: 20, right: 20 }} />
                   <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={65} tickFormatter={v => v >= 10000 ? `${(v / 10000).toFixed(0)}만` : v} />
                   <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v.toLocaleString()}주`} />} cursor={{ stroke: '#3b82f6', strokeWidth: 2, strokeDasharray: '4 4' }} />
                   <Area type="monotone" dataKey="거래량" stroke="#3b82f6" strokeWidth={3} fill="url(#gradVolume)"
