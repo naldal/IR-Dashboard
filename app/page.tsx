@@ -5,7 +5,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, Cell, ReferenceLine
 } from 'recharts';
-import { ArrowUpRight, ArrowDownRight, DollarSign, Activity, BarChart3, RefreshCw, Sun, Moon } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, DollarSign, Activity, BarChart3, RefreshCw } from 'lucide-react';
 import { useStockData } from '@/hooks/useStockData';
 
 const CHART_HEIGHT = 280;
@@ -121,12 +121,20 @@ function StatCard({ title, value, change, icon: Icon, up, isLoading, delay, dark
 export default function Dashboard() {
   const stock = useStockData();
   const [dark, setDark] = useState(false);
+  const [currentTime, setCurrentTime] = useState('');
   const windowWidth = useWindowWidth();
   const isMobile = windowWidth < 640;
 
   useEffect(() => {
     const saved = localStorage.getItem('darkMode') === 'true';
     setDark(saved);
+  }, []);
+
+  useEffect(() => {
+    const tick = () => setCurrentTime(new Date().toLocaleTimeString('ko-KR'));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
   }, []);
 
   const toggleDark = () => {
@@ -194,7 +202,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-between mb-10">
         <div className="flex items-center gap-4">
           <div>
-            <h1 className={`text-4xl font-extrabold tracking-tight transition-colors duration-300 ${dark ? 'text-white' : 'text-gray-900'}`}>IR실 증시 현황</h1>
+            <h1 className={`text-4xl font-extrabold tracking-tight transition-colors duration-300 ${dark ? 'text-white' : 'text-gray-900'}`}>IR실 증시 현황 대시보드</h1>
             <div className="mt-2">
               {stock.isMarketOpen ? (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-200">
@@ -217,20 +225,20 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {stock.lastUpdated && (
-            <p className={`text-sm font-medium transition-colors duration-300 ${dark ? 'text-slate-500' : 'text-gray-400'}`}>
-              기준: {stock.lastUpdated.toLocaleTimeString('ko-KR')}
-            </p>
-          )}
+          <p className={`text-sm font-medium tabular-nums transition-colors duration-300 ${dark ? 'text-slate-500' : 'text-gray-400'}`}>
+            {currentTime}
+          </p>
           {stock.error && <p className="text-sm text-red-500 font-medium">{stock.error}</p>}
           <button
             onClick={toggleDark}
-            className={`flex items-center justify-center w-9 h-9 rounded-xl transition-colors duration-200 ${
-              dark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-            }`}
             aria-label="다크모드 토글"
+            className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-300 focus:outline-none ${
+              dark ? 'bg-blue-500' : 'bg-gray-300'
+            }`}
           >
-            {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-300 ${
+              dark ? 'translate-x-5' : 'translate-x-0.5'
+            }`} />
           </button>
           <button
             onClick={stock.refresh}
