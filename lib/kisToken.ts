@@ -1,4 +1,10 @@
+import { unstable_cache } from 'next/cache';
+
+// KIS access tokens last 24 hours, so refresh a few minutes early.
+const TOKEN_REVALIDATE_SECONDS = 23 * 60 * 60 + 55 * 60;
+
 let cachedToken: { token: string; expiresAt: number } | null = null;
+let pendingTokenPromise: Promise<string> | null = null;
 
 export function getKisConfig() {
   const appKey = process.env.KIS_APP_KEY;
@@ -22,53 +28,77 @@ export function getKisConfig() {
   };
 }
 
+const loadCachedKisToken = unstable_cache(
+  async () => {
+    const now = Date.now();
+    const { appKey, appSecret, baseUrl } = getKisConfig();
+
+    const res = await fetch(`${baseUrl}/oauth2/tokenP`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        grant_type: 'client_credentials',
+        appkey: appKey,
+        appsecret: appSecret,
+      }),
+    });
+
+    const text = await res.text();
+    let data: Record<string, unknown> = {};
+
+    try {
+      data = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+    } catch {
+      data = {};
+    }
+
+    if (!res.ok) {
+      const detail = [
+        typeof data.msg_cd === 'string' ? data.msg_cd : null,
+        typeof data.msg1 === 'string' ? data.msg1 : null,
+        !data.msg_cd && !data.msg1 && text ? text : null,
+      ]
+        .filter(Boolean)
+        .join(' ');
+
+      throw new Error(`KIS token error: ${res.status}${detail ? ` - ${detail}` : ''}`);
+    }
+
+    const token = String(data.access_token ?? '');
+    const expiresAt = now + Number(data.expires_in ?? 0) * 1000;
+
+    if (!token) {
+      throw new Error('KIS token error: empty access_token');
+    }
+
+    return {
+      token,
+      expiresAt,
+    };
+  },
+  ['kis-access-token'],
+  { revalidate: TOKEN_REVALIDATE_SECONDS }
+);
+
 export async function getKisToken(): Promise<string> {
   const now = Date.now();
   if (cachedToken && cachedToken.expiresAt > now + 60_000) {
     return cachedToken.token;
   }
 
-  const { appKey, appSecret, baseUrl } = getKisConfig();
+  if (pendingTokenPromise) {
+    return pendingTokenPromise;
+  }
 
-  const res = await fetch(`${baseUrl}/oauth2/tokenP`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      grant_type: 'client_credentials',
-      appkey: appKey,
-      appsecret: appSecret,
-    }),
-  });
-
-  const text = await res.text();
-  let data: Record<string, unknown> = {};
+  pendingTokenPromise = (async () => {
+    const nextToken = await loadCachedKisToken();
+    cachedToken = nextToken;
+    return nextToken.token;
+  })();
 
   try {
-    data = text ? (JSON.parse(text) as Record<string, unknown>) : {};
-  } catch {
-    data = {};
+    return await pendingTokenPromise;
+  } finally {
+    pendingTokenPromise = null;
   }
-
-  if (!res.ok) {
-    const detail = [
-      typeof data.msg_cd === 'string' ? data.msg_cd : null,
-      typeof data.msg1 === 'string' ? data.msg1 : null,
-      !data.msg_cd && !data.msg1 && text ? text : null,
-    ]
-      .filter(Boolean)
-      .join(' ');
-
-    throw new Error(`KIS token error: ${res.status}${detail ? ` - ${detail}` : ''}`);
-  }
-
-  cachedToken = {
-    token: String(data.access_token ?? ''),
-    expiresAt: now + Number(data.expires_in ?? 0) * 1000,
-  };
-
-  if (!cachedToken.token) {
-    throw new Error('KIS token error: empty access_token');
-  }
-
-  return cachedToken.token;
 }
