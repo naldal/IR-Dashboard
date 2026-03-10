@@ -301,7 +301,7 @@ export default function Dashboard() {
               <h3 className={chartTitle}>3. 주요 게임사 등락률</h3>
               <p className={chartSub}>단위: %</p>
               <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                <BarChart data={stock.sectorData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }} barCategoryGap="25%">
+                <BarChart data={stock.sectorData} margin={{ top: 10, right: 10, left: 20, bottom: 0 }} barCategoryGap="25%">
                   <CartesianGrid {...gridStyle} vertical={false} />
                   <XAxis dataKey="name" tick={(props) => <GameTick {...props} dark={dark} />} axisLine={false} tickLine={false} height={65} />
                   <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={45} tickFormatter={v => `${v > 0 ? '+' : ''}${v}`} />
@@ -321,7 +321,7 @@ export default function Dashboard() {
               <h3 className={chartTitle}>4. 투자자별 순매매 동향</h3>
               <p className={chartSub}>단위: 백만원</p>
               <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                <BarChart data={stock.investorData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }} barCategoryGap="20%">
+                <BarChart data={stock.investorData} margin={{ top: 10, right: 10, left: 20, bottom: 0 }} barCategoryGap="20%">
                   <CartesianGrid {...gridStyle} vertical={false} />
                   <XAxis dataKey="name" tick={(props) => <GameTick {...props} dark={dark} />} axisLine={false} tickLine={false} height={65} />
                   <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={65} tickFormatter={v => Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}B` : v} />

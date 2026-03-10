@@ -25,6 +25,11 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* 회전된 차트 축 레이블이 SVG 경계에서 잘리지 않도록 */
+.recharts-surface {
+  overflow: visible;
+}
+
 /* Card stagger entrance */
 @keyframes fadeSlideUp {
   from { opacity: 0; transform: translateY(18px); }
