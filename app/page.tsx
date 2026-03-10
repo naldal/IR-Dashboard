@@ -163,21 +163,23 @@ export default function Dashboard() {
     <div className={`min-h-screen p-6 md:p-10 font-sans transition-colors duration-300 ${dark ? 'bg-slate-950' : 'bg-gray-50'}`}>
       <div className="flex items-center justify-between mb-10">
         <div className="flex items-center gap-4">
-          <div className="relative flex h-3 w-3">
-            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${stock.isMarketOpen ? 'bg-green-400' : 'bg-red-400'}`}></span>
-            <span className={`relative inline-flex h-3 w-3 rounded-full ${stock.isMarketOpen ? 'bg-green-500' : 'bg-red-500'}`}></span>
-          </div>
           <div>
             <h1 className={`text-4xl font-extrabold tracking-tight transition-colors duration-300 ${dark ? 'text-white' : 'text-gray-900'}`}>IR실 증시 현황</h1>
             <div className="mt-2">
               {stock.isMarketOpen ? (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-200">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+                  </span>
                   장중
                 </span>
               ) : (
                 <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${dark ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-400" />
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+                  </span>
                   장마감
                 </span>
               )}
