@@ -35,8 +35,17 @@ export interface StockState {
   lastUpdated: Date | null;
   isLoading: boolean;
   isChartLoading: boolean;
+  isMarketOpen: boolean;
   error: string | null;
   refresh: () => void;
+}
+
+function checkMarketOpen(): boolean {
+  const now = new Date();
+  const day = now.getDay(); // 0=일, 6=토
+  if (day === 0 || day === 6) return false;
+  const t = now.getHours() * 60 + now.getMinutes();
+  return t >= 9 * 60 && t <= 15 * 60 + 30;
 }
 
 const INITIAL_STATE: Omit<StockState, 'refresh'> = {
@@ -55,21 +64,64 @@ const INITIAL_STATE: Omit<StockState, 'refresh'> = {
   lastUpdated: null,
   isLoading: true,
   isChartLoading: true,
+  isMarketOpen: checkMarketOpen(),
   error: null,
 };
 
 export function useStockData(): StockState {
   const [state, setState] = useState<Omit<StockState, 'refresh'>>(INITIAL_STATE);
 
-  const fetchSummary = useCallback(async () => {
-    setState((prev) => ({ ...prev, isLoading: true, error: null }));
+  // 5초 폴링: 가격/지수/환율만 + 차트 마지막 포인트 시가총액 갱신
+  const fetchQuick = useCallback(async () => {
     try {
-      const [price, index, exchange, investor, sector] = await Promise.all([
+      const [price, index, exchange] = await Promise.all([
+        fetch('/api/stock/price').then((r) => r.json()),
+        fetch('/api/stock/index').then((r) => r.json()),
+        fetch('/api/stock/exchange').then((r) => r.json()),
+      ]);
+
+      setState((prev) => {
+        const newMarketCap = Number(price.marketCap ?? 0);
+        const updatedChart =
+          prev.chartHistory.length > 0 && newMarketCap > 0
+            ? [
+                ...prev.chartHistory.slice(0, -1),
+                { ...prev.chartHistory[prev.chartHistory.length - 1], 시가총액: newMarketCap },
+              ]
+            : prev.chartHistory;
+
+        return {
+          ...prev,
+          price: price.price ?? prev.price,
+          priceChange: price.change ?? prev.priceChange,
+          changeRate: price.changeRate ?? prev.changeRate,
+          marketCap: price.marketCap ?? prev.marketCap,
+          volume: price.volume ?? prev.volume,
+          kospi: index.kospi ?? prev.kospi,
+          kosdaq: index.kosdaq ?? prev.kosdaq,
+          exchangeRate: exchange.rate ?? prev.exchangeRate,
+          exchangeChange: exchange.change ?? prev.exchangeChange,
+          chartHistory: updatedChart,
+          lastUpdated: new Date(),
+          isLoading: false,
+        };
+      });
+    } catch {
+      // 실패 시 기존 데이터 유지
+    }
+  }, []);
+
+  // 최초 + 5분마다: 전체 데이터 (섹터, 투자자, 차트 포함)
+  const fetchFull = useCallback(async () => {
+    setState((prev) => ({ ...prev, isLoading: true, isChartLoading: true, error: null }));
+    try {
+      const [price, index, exchange, investor, sector, chart] = await Promise.all([
         fetch('/api/stock/price').then((r) => r.json()),
         fetch('/api/stock/index').then((r) => r.json()),
         fetch('/api/stock/exchange').then((r) => r.json()),
         fetch('/api/stock/investor').then((r) => r.json()),
         fetch('/api/stock/sector').then((r) => r.json()),
+        fetch('/api/stock/chart').then((r) => r.json()),
       ]);
 
       setState((prev) => ({
@@ -85,37 +137,31 @@ export function useStockData(): StockState {
         exchangeChange: exchange.change ?? '-',
         sectorData: Array.isArray(sector) ? sector : [],
         investorData: Array.isArray(investor) ? investor : [],
+        chartHistory: Array.isArray(chart) ? chart : [],
         lastUpdated: new Date(),
         isLoading: false,
-      }));
-    } catch {
-      setState((prev) => ({ ...prev, isLoading: false, error: '데이터 로드 실패' }));
-    }
-  }, []);
-
-  const fetchChart = useCallback(async () => {
-    setState((prev) => ({ ...prev, isChartLoading: true }));
-    try {
-      const chart = await fetch('/api/stock/chart').then((r) => r.json());
-      setState((prev) => ({
-        ...prev,
-        chartHistory: Array.isArray(chart) ? chart : [],
         isChartLoading: false,
       }));
     } catch {
-      setState((prev) => ({ ...prev, isChartLoading: false }));
+      setState((prev) => ({ ...prev, isLoading: false, isChartLoading: false, error: '데이터 로드 실패' }));
     }
   }, []);
 
-  const refresh = useCallback(() => {
-    fetchSummary();
-    fetchChart();
-  }, [fetchSummary, fetchChart]);
+  const refresh = useCallback(() => { fetchFull(); }, [fetchFull]);
 
   useEffect(() => {
-    fetchSummary();
-    fetchChart();
-  }, [fetchSummary, fetchChart]);
+    fetchFull();
+
+    if (!checkMarketOpen()) return;
+
+    const quickTimer = setInterval(fetchQuick, 5_000);         // 5초: 가격/지수/환율
+    const fullTimer  = setInterval(fetchFull,  5 * 60_000);    // 5분: 전체 갱신
+
+    return () => {
+      clearInterval(quickTimer);
+      clearInterval(fullTimer);
+    };
+  }, [fetchQuick, fetchFull]);
 
   return { ...state, refresh };
 }

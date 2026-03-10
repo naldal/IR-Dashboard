@@ -108,8 +108,8 @@ export default function Dashboard() {
       <div className="flex items-center justify-between mb-10">
         <div className="flex items-center gap-4">
           <div className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-            <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500"></span>
+            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${stock.isMarketOpen ? 'bg-green-400' : 'bg-red-400'}`}></span>
+            <span className={`relative inline-flex h-3 w-3 rounded-full ${stock.isMarketOpen ? 'bg-green-500' : 'bg-red-500'}`}></span>
           </div>
           <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">IR실 증시 Dashboard</h1>
         </div>
@@ -169,7 +169,7 @@ export default function Dashboard() {
               <h3 className="text-xl font-bold text-gray-800 tracking-tight mb-2">1. 시가총액 추이</h3>
               <p className="text-sm font-medium text-gray-500 mb-6">단위: 억원</p>
               <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                <AreaChart data={stock.chartHistory} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                <AreaChart data={stock.chartHistory} margin={{ top: 10, right: 28, left: 10, bottom: 0 }}>
                   <defs>
                     <linearGradient id="gradMarketCap" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#ef4444" stopOpacity={0.15} />
@@ -196,7 +196,12 @@ export default function Dashboard() {
                     stroke="#ef4444"
                     strokeWidth={3}
                     fill="url(#gradMarketCap)"
-                    dot={false}
+                    dot={(props: any) => {
+                      if (!stock.isMarketOpen) return <g key={props.key} />;
+                      const last = stock.chartHistory.length - 1;
+                      if (props.index !== last) return <g key={props.key} />;
+                      return <circle key={props.key} cx={props.cx} cy={props.cy} r={5} fill="#ef4444" stroke="white" strokeWidth={2} />;
+                    }}
                     activeDot={{ r: 6, fill: '#ef4444', strokeWidth: 3, stroke: 'white' }}
                   />
                 </AreaChart>
@@ -208,7 +213,7 @@ export default function Dashboard() {
               <h3 className="text-xl font-bold text-gray-800 tracking-tight mb-2">2. 거래량 추이</h3>
               <p className="text-sm font-medium text-gray-500 mb-6">단위: 주 (구간 합산)</p>
               <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                <AreaChart data={stock.chartHistory} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                <AreaChart data={stock.chartHistory} margin={{ top: 10, right: 28, left: 10, bottom: 0 }}>
                   <defs>
                     <linearGradient id="gradVolume" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.15} />
@@ -234,7 +239,12 @@ export default function Dashboard() {
                     stroke="#3b82f6"
                     strokeWidth={3}
                     fill="url(#gradVolume)"
-                    dot={false}
+                    dot={(props: any) => {
+                      if (!stock.isMarketOpen) return <g key={props.key} />;
+                      const last = stock.chartHistory.length - 1;
+                      if (props.index !== last) return <g key={props.key} />;
+                      return <circle key={props.key} cx={props.cx} cy={props.cy} r={5} fill="#3b82f6" stroke="white" strokeWidth={2} />;
+                    }}
                     activeDot={{ r: 6, fill: '#3b82f6', strokeWidth: 3, stroke: 'white' }}
                   />
                 </AreaChart>
