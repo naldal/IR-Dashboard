@@ -9,16 +9,31 @@ import { ArrowUpRight, ArrowDownRight, DollarSign, Activity, BarChart3, RefreshC
 import { useStockData } from '@/hooks/useStockData';
 
 const CHART_HEIGHT = 280;
+const MOBILE_CHART_HEIGHT = 360;
 
+// 세로 바 차트용 X축 레이블 (회전)
 const GameTick = ({ x, y, payload, dark }: any) => (
   <text
-    x={x}
-    y={y}
+    x={x} y={y}
     textAnchor="end"
     transform={`rotate(-35, ${x}, ${y})`}
     fill={payload.value === '위메이드' ? (dark ? '#f1f5f9' : '#111827') : (dark ? '#64748b' : '#6b7280')}
     fontSize={13}
     fontWeight={payload.value === '위메이드' ? 800 : 600}
+  >
+    {payload.value}
+  </text>
+);
+
+// 가로 바 차트용 Y축 레이블
+const HorizontalGameTick = ({ x, y, payload, dark }: any) => (
+  <text
+    x={x} y={y}
+    textAnchor="end"
+    dominantBaseline="middle"
+    fill={payload.value === '위메이드' ? (dark ? '#f1f5f9' : '#111827') : (dark ? '#64748b' : '#6b7280')}
+    fontSize={12}
+    fontWeight={payload.value === '위메이드' ? 800 : 500}
   >
     {payload.value}
   </text>
@@ -65,6 +80,16 @@ function useFlash(value: string) {
   return active;
 }
 
+function useWindowWidth() {
+  const [width, setWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+  useEffect(() => {
+    const handler = () => setWidth(window.innerWidth);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return width;
+}
+
 interface CardProps {
   title: string; value: string; change: string;
   icon: React.ElementType; up: boolean; isLoading: boolean; delay: number; dark: boolean;
@@ -96,6 +121,8 @@ function StatCard({ title, value, change, icon: Icon, up, isLoading, delay, dark
 export default function Dashboard() {
   const stock = useStockData();
   const [dark, setDark] = useState(false);
+  const windowWidth = useWindowWidth();
+  const isMobile = windowWidth < 640;
 
   useEffect(() => {
     const saved = localStorage.getItem('darkMode') === 'true';
@@ -111,7 +138,10 @@ export default function Dashboard() {
   };
 
   const axisStyle = { fontSize: 14, fill: dark ? '#64748b' : '#6b7280', fontWeight: 600 };
+  const mobileAxisStyle = { fontSize: 12, fill: dark ? '#64748b' : '#6b7280', fontWeight: 600 };
   const gridStyle = { stroke: dark ? '#1e293b' : '#e5e7eb', strokeDasharray: '4 4' };
+  const refLineColor = dark ? '#475569' : '#9ca3af';
+  const cursorFill = dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
 
   const priceUp = isUp(stock.changeRate);
   const kospiUp = isUp(stock.kospi.changeRate);
@@ -300,19 +330,36 @@ export default function Dashboard() {
             <div className={`chart-enter ${chartCard}`} style={{ animationDelay: '200ms' }}>
               <h3 className={chartTitle}>3. 주요 게임사 등락률</h3>
               <p className={chartSub}>단위: %</p>
-              <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                <BarChart data={stock.sectorData} margin={{ top: 10, right: 10, left: 20, bottom: 0 }} barCategoryGap="25%">
-                  <CartesianGrid {...gridStyle} vertical={false} />
-                  <XAxis dataKey="name" tick={(props) => <GameTick {...props} dark={dark} />} axisLine={false} tickLine={false} height={65} />
-                  <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={45} tickFormatter={v => `${v > 0 ? '+' : ''}${v}`} />
-                  <ReferenceLine y={0} stroke={dark ? '#475569' : '#9ca3af'} strokeWidth={2} />
-                  <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v > 0 ? '+' : ''}${v}%`} />} cursor={{ fill: dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)' }} />
-                  <Bar dataKey="등락률">
-                    {stock.sectorData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.등락률 >= 0 ? '#ef4444' : '#3b82f6'} />
-                    ))}
-                  </Bar>
-                </BarChart>
+              <ResponsiveContainer width="100%" height={isMobile ? MOBILE_CHART_HEIGHT : CHART_HEIGHT}>
+                {isMobile ? (
+                  /* 모바일: 가로 바 차트 (회사명 Y축) */
+                  <BarChart layout="vertical" data={stock.sectorData} margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
+                    <CartesianGrid {...gridStyle} horizontal={false} />
+                    <XAxis type="number" tick={mobileAxisStyle} axisLine={false} tickLine={false} tickFormatter={v => `${v > 0 ? '+' : ''}${v}`} />
+                    <YAxis type="category" dataKey="name" tick={(props) => <HorizontalGameTick {...props} dark={dark} />} axisLine={false} tickLine={false} width={80} />
+                    <ReferenceLine x={0} stroke={refLineColor} strokeWidth={2} />
+                    <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v > 0 ? '+' : ''}${v}%`} />} cursor={cursorFill} />
+                    <Bar dataKey="등락률" radius={[0, 3, 3, 0]}>
+                      {stock.sectorData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.등락률 >= 0 ? '#ef4444' : '#3b82f6'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                ) : (
+                  /* 데스크톱: 세로 바 차트 (회사명 X축 회전) */
+                  <BarChart data={stock.sectorData} margin={{ top: 10, right: 10, left: 20, bottom: 0 }} barCategoryGap="25%">
+                    <CartesianGrid {...gridStyle} vertical={false} />
+                    <XAxis dataKey="name" tick={(props) => <GameTick {...props} dark={dark} />} axisLine={false} tickLine={false} height={65} />
+                    <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={45} tickFormatter={v => `${v > 0 ? '+' : ''}${v}`} />
+                    <ReferenceLine y={0} stroke={refLineColor} strokeWidth={2} />
+                    <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v > 0 ? '+' : ''}${v}%`} />} cursor={{ fill: cursorFill }} />
+                    <Bar dataKey="등락률">
+                      {stock.sectorData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.등락률 >= 0 ? '#ef4444' : '#3b82f6'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                )}
               </ResponsiveContainer>
             </div>
 
@@ -320,18 +367,34 @@ export default function Dashboard() {
             <div className={`chart-enter ${chartCard}`} style={{ animationDelay: '300ms' }}>
               <h3 className={chartTitle}>4. 투자자별 순매매 동향</h3>
               <p className={chartSub}>단위: 백만원</p>
-              <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                <BarChart data={stock.investorData} margin={{ top: 10, right: 10, left: 20, bottom: 0 }} barCategoryGap="20%">
-                  <CartesianGrid {...gridStyle} vertical={false} />
-                  <XAxis dataKey="name" tick={(props) => <GameTick {...props} dark={dark} />} axisLine={false} tickLine={false} height={65} />
-                  <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={65} tickFormatter={v => Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}B` : v} />
-                  <ReferenceLine y={0} stroke={dark ? '#475569' : '#9ca3af'} strokeWidth={2} />
-                  <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v.toLocaleString()}백만`} />} cursor={{ fill: dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)' }} />
-                  <Legend wrapperStyle={{ fontSize: 14, paddingTop: 15 }} formatter={(value) => <span style={{ color: dark ? '#94a3b8' : '#4b5563', fontWeight: 700 }}>{value}</span>} />
-                  <Bar dataKey="외국인" fill="#ef4444" fillOpacity={0.9} />
-                  <Bar dataKey="기관" fill="#f59e0b" fillOpacity={0.9} />
-                  <Bar dataKey="개인" fill="#3b82f6" fillOpacity={0.9} />
-                </BarChart>
+              <ResponsiveContainer width="100%" height={isMobile ? MOBILE_CHART_HEIGHT : CHART_HEIGHT}>
+                {isMobile ? (
+                  /* 모바일: 가로 바 차트 (회사명 Y축) */
+                  <BarChart layout="vertical" data={stock.investorData} margin={{ top: 0, right: 20, left: 0, bottom: 0 }} barCategoryGap="20%">
+                    <CartesianGrid {...gridStyle} horizontal={false} />
+                    <XAxis type="number" tick={mobileAxisStyle} axisLine={false} tickLine={false} tickFormatter={v => Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}B` : String(v)} />
+                    <YAxis type="category" dataKey="name" tick={(props) => <HorizontalGameTick {...props} dark={dark} />} axisLine={false} tickLine={false} width={80} />
+                    <ReferenceLine x={0} stroke={refLineColor} strokeWidth={2} />
+                    <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v.toLocaleString()}백만`} />} cursor={cursorFill} />
+                    <Legend wrapperStyle={{ fontSize: 13, paddingTop: 10 }} formatter={(value) => <span style={{ color: dark ? '#94a3b8' : '#4b5563', fontWeight: 700 }}>{value}</span>} />
+                    <Bar dataKey="외국인" fill="#ef4444" fillOpacity={0.9} radius={[0, 3, 3, 0]} />
+                    <Bar dataKey="기관" fill="#f59e0b" fillOpacity={0.9} radius={[0, 3, 3, 0]} />
+                    <Bar dataKey="개인" fill="#3b82f6" fillOpacity={0.9} radius={[0, 3, 3, 0]} />
+                  </BarChart>
+                ) : (
+                  /* 데스크톱: 세로 바 차트 (회사명 X축 회전) */
+                  <BarChart data={stock.investorData} margin={{ top: 10, right: 10, left: 20, bottom: 0 }} barCategoryGap="20%">
+                    <CartesianGrid {...gridStyle} vertical={false} />
+                    <XAxis dataKey="name" tick={(props) => <GameTick {...props} dark={dark} />} axisLine={false} tickLine={false} height={65} />
+                    <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={65} tickFormatter={v => Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}B` : String(v)} />
+                    <ReferenceLine y={0} stroke={refLineColor} strokeWidth={2} />
+                    <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v.toLocaleString()}백만`} />} cursor={{ fill: cursorFill }} />
+                    <Legend wrapperStyle={{ fontSize: 14, paddingTop: 15 }} formatter={(value) => <span style={{ color: dark ? '#94a3b8' : '#4b5563', fontWeight: 700 }}>{value}</span>} />
+                    <Bar dataKey="외국인" fill="#ef4444" fillOpacity={0.9} />
+                    <Bar dataKey="기관" fill="#f59e0b" fillOpacity={0.9} />
+                    <Bar dataKey="개인" fill="#3b82f6" fillOpacity={0.9} />
+                  </BarChart>
+                )}
               </ResponsiveContainer>
             </div>
           </>
