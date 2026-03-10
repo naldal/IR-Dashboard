@@ -40,18 +40,6 @@ body {
   animation: fadeSlideUp 0.4s ease forwards;
 }
 
-/* Card value flash on live update */
-@keyframes flashRed {
-  0%, 100% { background-color: transparent; }
-  35%       { background-color: rgba(239, 68, 68, 0.08); }
-}
-@keyframes flashBlue {
-  0%, 100% { background-color: transparent; }
-  35%       { background-color: rgba(59, 130, 246, 0.08); }
-}
-.flash-up   { animation: flashRed  0.7s ease; }
-.flash-down { animation: flashBlue 0.7s ease; }
-
 /* Chart section fade-in */
 @keyframes fadeSlideIn {
   from { opacity: 0; transform: translateY(12px); }

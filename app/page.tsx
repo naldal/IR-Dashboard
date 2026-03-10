@@ -11,6 +11,7 @@ import { useStockData } from '@/hooks/useStockData';
 const CHART_HEIGHT = 280;
 const MOBILE_CHART_HEIGHT = 360;
 const COMPANY_CHART_BREAKPOINT = 2000;
+const VALUE_ROLL_DURATION_MS = 280;
 
 // 세로 바 차트용 X축 레이블 (회전)
 const GameTick = ({ x, y, payload, dark }: any) => (
@@ -66,19 +67,94 @@ function isUp(changeRate: string): boolean {
   return !isNaN(n) && n >= 0;
 }
 
-function useFlash(value: string) {
-  const [active, setActive] = useState(false);
-  const prevRef = useRef(value);
+function parseNumericText(value: string): number | null {
+  const normalized = value.replace(/,/g, '').replace(/[^\d.-]/g, '');
+  if (!normalized || normalized === '-' || normalized === '.' || normalized === '-.') {
+    return null;
+  }
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function detectRollDirection(previous: string, next: string): 'up' | 'down' {
+  const prevNumber = parseNumericText(previous);
+  const nextNumber = parseNumericText(next);
+  if (prevNumber === null || nextNumber === null) return 'up';
+  return nextNumber >= prevNumber ? 'up' : 'down';
+}
+
+function ValueRoller({ value, className }: { value: string; className: string }) {
+  const committedRef = useRef(value);
+  const [previousValue, setPreviousValue] = useState(value);
+  const [nextValue, setNextValue] = useState(value);
+  const [direction, setDirection] = useState<'up' | 'down'>('up');
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [started, setStarted] = useState(false);
+
   useEffect(() => {
-    if (prevRef.current !== value && value !== '-') {
-      setActive(true);
-      const id = setTimeout(() => setActive(false), 700);
-      prevRef.current = value;
-      return () => clearTimeout(id);
-    }
-    prevRef.current = value;
+    if (value === committedRef.current) return;
+
+    const previous = committedRef.current;
+    setPreviousValue(previous);
+    setNextValue(value);
+    setDirection(detectRollDirection(previous, value));
+    setIsAnimating(true);
+    setStarted(false);
+
+    const raf = requestAnimationFrame(() => setStarted(true));
+    const timeoutId = setTimeout(() => {
+      committedRef.current = value;
+      setIsAnimating(false);
+    }, VALUE_ROLL_DURATION_MS);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(timeoutId);
+    };
   }, [value]);
-  return active;
+
+  const outgoingClass = started
+    ? (direction === 'up' ? '-translate-y-full opacity-0' : 'translate-y-full opacity-0')
+    : 'translate-y-0 opacity-100';
+  const incomingClass = started
+    ? 'translate-y-0 opacity-100'
+    : (direction === 'up' ? 'translate-y-full opacity-0' : '-translate-y-full opacity-0');
+
+  const maxLength = Math.max(previousValue.length, nextValue.length);
+  const previousChars = previousValue.padStart(maxLength, ' ').split('');
+  const nextChars = nextValue.padStart(maxLength, ' ').split('');
+  const isDigit = (ch: string) => /\d/.test(ch);
+
+  return (
+    <div className={`${className} h-[1.2em] whitespace-nowrap leading-[1.2]`}>
+      <span className="inline-flex">
+        {nextChars.map((nextChar, index) => {
+          const prevChar = previousChars[index];
+          const charKey = `${index}-${nextChar}`;
+          const changedDigit = isAnimating && prevChar !== nextChar && isDigit(prevChar) && isDigit(nextChar);
+
+          if (!changedDigit) {
+            return (
+              <span key={charKey} className="inline-flex">
+                {nextChar === ' ' ? '\u00A0' : nextChar}
+              </span>
+            );
+          }
+
+          return (
+            <span key={charKey} className="relative inline-flex h-[1.2em] min-w-[0.62em] overflow-hidden">
+              <span className={`absolute inset-0 transition-all duration-300 ease-out ${outgoingClass}`}>
+                {prevChar}
+              </span>
+              <span className={`absolute inset-0 transition-all duration-300 ease-out ${incomingClass}`}>
+                {nextChar}
+              </span>
+            </span>
+          );
+        })}
+      </span>
+    </div>
+  );
 }
 
 function useWindowWidth() {
@@ -96,21 +172,21 @@ interface CardProps {
   icon: React.ElementType; up: boolean; isLoading: boolean; delay: number; dark: boolean;
 }
 function StatCard({ title, value, change, icon: Icon, up, isLoading, delay, dark }: CardProps) {
-  const flashing = useFlash(value);
   return (
     <div
       className={`card-enter p-6 rounded-2xl shadow-md border flex flex-col transition-colors duration-300 ${
         dark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'
-      } ${flashing ? (up ? 'flash-up' : 'flash-down') : ''}`}
+      }`}
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="flex justify-between items-center mb-4">
         <h3 className={`text-lg font-bold transition-colors duration-300 ${dark ? 'text-slate-400' : 'text-gray-500'}`}>{title}</h3>
         <Icon className={`h-6 w-6 transition-colors duration-300 ${dark ? 'text-slate-600' : 'text-gray-300'}`} />
       </div>
-      <div className={`text-3xl font-extrabold transition-colors duration-300 ${dark ? 'text-white' : 'text-gray-900'} ${isLoading ? 'animate-pulse' : ''}`}>
-        {value}
-      </div>
+      <ValueRoller
+        value={value}
+        className={`text-3xl font-extrabold tabular-nums transition-colors duration-300 ${dark ? 'text-white' : 'text-gray-900'} ${isLoading ? 'animate-pulse' : ''}`}
+      />
       <div className={`text-base font-bold mt-3 flex items-center ${up ? 'text-red-500' : 'text-blue-500'}`}>
         {up ? <ArrowUpRight className="h-5 w-5 mr-1" strokeWidth={3} /> : <ArrowDownRight className="h-5 w-5 mr-1" strokeWidth={3} />}
         {change}
@@ -264,7 +340,7 @@ export default function Dashboard() {
       </div>
 
       {/* 상단 카드뷰 */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-5 mb-10">
+      <div className="grid grid-cols-1 min-[1181px]:grid-cols-5 gap-5 mb-10">
         {cards.map((card, index) => (
           <StatCard key={index} {...card} isLoading={stock.isLoading} delay={index * 80} dark={dark} />
         ))}
@@ -449,6 +525,16 @@ export default function Dashboard() {
             </div>
           </>
         )}
+      </div>
+
+      <div
+        className={`fixed right-4 bottom-4 z-50 rounded-lg border px-3 py-1.5 text-xs font-semibold tabular-nums shadow-sm transition-colors duration-300 ${
+          dark
+            ? 'border-slate-700 bg-slate-900/90 text-slate-200'
+            : 'border-gray-300 bg-white/90 text-gray-700'
+        }`}
+      >
+        화면 너비: {windowWidth}px
       </div>
 
       <p className={`mt-10 text-center text-xs transition-colors duration-300 ${dark ? 'text-slate-700' : 'text-gray-400'}`}>Powered by 위메이드 송하민 대리</p>
