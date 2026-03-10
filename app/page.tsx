@@ -240,12 +240,12 @@ export default function Dashboard() {
                   <CartesianGrid {...GRID_STYLE} vertical={false} />
                   <XAxis
                     dataKey="name"
-                    tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 600 }}
+                    tick={{ fontSize: 13, fill: '#6b7280', fontWeight: 600 }}
                     axisLine={false}
                     tickLine={false}
                     angle={-35}
                     textAnchor="end"
-                    height={60}
+                    height={65}
                   />
                   <YAxis
                     tick={AXIS_STYLE}
@@ -264,7 +264,9 @@ export default function Dashboard() {
                       <Cell
                         key={`cell-${index}`}
                         fill={entry.등락률 >= 0 ? '#ef4444' : '#3b82f6'}
-                        fillOpacity={0.9}
+                        fillOpacity={entry.name === '위메이드' ? 1 : 0.35}
+                        stroke={entry.name === '위메이드' ? '#991b1b' : 'none'}
+                        strokeWidth={entry.name === '위메이드' ? 2 : 0}
                       />
                     ))}
                   </Bar>
@@ -277,9 +279,17 @@ export default function Dashboard() {
               <h3 className="text-xl font-bold text-gray-800 tracking-tight mb-2">4. 투자자별 순매매 동향</h3>
               <p className="text-sm font-medium text-gray-500 mb-6">단위: 백만원</p>
               <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                <BarChart data={stock.investorData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }} barCategoryGap="30%">
+                <BarChart data={stock.investorData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }} barCategoryGap="20%">
                   <CartesianGrid {...GRID_STYLE} vertical={false} />
-                  <XAxis dataKey="name" tick={AXIS_STYLE} axisLine={false} tickLine={false} dy={10} />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 13, fill: '#6b7280', fontWeight: 600 }}
+                    axisLine={false}
+                    tickLine={false}
+                    angle={-35}
+                    textAnchor="end"
+                    height={65}
+                  />
                   <YAxis
                     tick={AXIS_STYLE}
                     axisLine={false}
@@ -296,9 +306,21 @@ export default function Dashboard() {
                     wrapperStyle={{ fontSize: 14, paddingTop: 15 }}
                     formatter={(value) => <span style={{ color: '#4b5563', fontWeight: 700 }}>{value}</span>}
                   />
-                  <Bar dataKey="외국인" fill="#ef4444" fillOpacity={0.9} />
-                  <Bar dataKey="기관" fill="#f59e0b" fillOpacity={0.9} />
-                  <Bar dataKey="개인" fill="#3b82f6" fillOpacity={0.9} />
+                  <Bar dataKey="외국인" fill="#ef4444">
+                    {stock.investorData.map((entry, i) => (
+                      <Cell key={i} fill="#ef4444" fillOpacity={entry.name === '위메이드' ? 1 : 0.35} />
+                    ))}
+                  </Bar>
+                  <Bar dataKey="기관" fill="#f59e0b">
+                    {stock.investorData.map((entry, i) => (
+                      <Cell key={i} fill="#f59e0b" fillOpacity={entry.name === '위메이드' ? 1 : 0.35} />
+                    ))}
+                  </Bar>
+                  <Bar dataKey="개인" fill="#3b82f6">
+                    {stock.investorData.map((entry, i) => (
+                      <Cell key={i} fill="#3b82f6" fillOpacity={entry.name === '위메이드' ? 1 : 0.35} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
