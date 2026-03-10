@@ -5,21 +5,18 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, Cell, ReferenceLine
 } from 'recharts';
-import { ArrowUpRight, ArrowDownRight, DollarSign, Activity, BarChart3, RefreshCw } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, DollarSign, Activity, BarChart3, RefreshCw, Sun, Moon } from 'lucide-react';
 import { useStockData } from '@/hooks/useStockData';
 
-// 축 글씨 크기를 11에서 14로 키웠습니다.
-const AXIS_STYLE = { fontSize: 14, fill: '#6b7280', fontWeight: 600 };
-const GRID_STYLE = { stroke: '#e5e7eb', strokeDasharray: '4 4' };
-const CHART_HEIGHT = 280; // 차트가 덜 답답해 보이도록 높이도 약간 키웠습니다.
+const CHART_HEIGHT = 280;
 
-const GameTick = ({ x, y, payload }: any) => (
+const GameTick = ({ x, y, payload, dark }: any) => (
   <text
     x={x}
     y={y}
     textAnchor="end"
     transform={`rotate(-35, ${x}, ${y})`}
-    fill={payload.value === '위메이드' ? '#111827' : '#6b7280'}
+    fill={payload.value === '위메이드' ? (dark ? '#f9fafb' : '#111827') : (dark ? '#9ca3af' : '#6b7280')}
     fontSize={13}
     fontWeight={payload.value === '위메이드' ? 800 : 600}
   >
@@ -27,18 +24,18 @@ const GameTick = ({ x, y, payload }: any) => (
   </text>
 );
 
-const ChartTooltip = ({ active, payload, label, valueFormatter }: any) => {
+const ChartTooltip = ({ active, payload, label, valueFormatter, dark }: any) => {
   if (!active || !payload?.length) return null;
   return (
     <div style={{
-      background: 'white',
-      border: '1px solid #e5e7eb',
+      background: dark ? '#1f2937' : 'white',
+      border: `1px solid ${dark ? '#374151' : '#e5e7eb'}`,
       borderRadius: 10,
       padding: '12px 16px',
-      boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
-      fontSize: 16, // 툴팁 글씨 크기 확대
+      boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+      fontSize: 16,
     }}>
-      <p style={{ color: '#4b5563', fontSize: 14, marginBottom: 8, fontWeight: 700 }}>{label}</p>
+      <p style={{ color: dark ? '#9ca3af' : '#4b5563', fontSize: 14, marginBottom: 8, fontWeight: 700 }}>{label}</p>
       {payload.map((entry: any, i: number) => (
         <p key={i} style={{ color: entry.color, fontWeight: 800, margin: '4px 0' }}>
           {entry.name}: {valueFormatter ? valueFormatter(entry.value) : entry.value.toLocaleString()}
@@ -76,17 +73,17 @@ function StatCard({ title, value, change, icon: Icon, up, isLoading, delay }: Ca
   const flashing = useFlash(value);
   return (
     <div
-      className={`card-enter bg-white p-6 rounded-2xl shadow-md border border-gray-200 flex flex-col ${flashing ? (up ? 'flash-up' : 'flash-down') : ''}`}
+      className={`card-enter bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 flex flex-col ${flashing ? (up ? 'flash-up' : 'flash-down') : ''}`}
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-bold text-gray-600">{title}</h3>
-        <Icon className="h-6 w-6 text-gray-400" />
+        <h3 className="text-lg font-bold text-gray-600 dark:text-gray-400">{title}</h3>
+        <Icon className="h-6 w-6 text-gray-400 dark:text-gray-500" />
       </div>
-      <div className={`text-3xl font-extrabold text-gray-900 ${isLoading ? 'animate-pulse' : ''}`}>
+      <div className={`text-3xl font-extrabold text-gray-900 dark:text-white ${isLoading ? 'animate-pulse' : ''}`}>
         {value}
       </div>
-      <div className={`text-base font-bold mt-3 flex items-center ${up ? 'text-red-600' : 'text-blue-600'}`}>
+      <div className={`text-base font-bold mt-3 flex items-center ${up ? 'text-red-500' : 'text-blue-500'}`}>
         {up ? <ArrowUpRight className="h-5 w-5 mr-1" strokeWidth={3} /> : <ArrowDownRight className="h-5 w-5 mr-1" strokeWidth={3} />}
         {change}
       </div>
@@ -96,6 +93,21 @@ function StatCard({ title, value, change, icon: Icon, up, isLoading, delay }: Ca
 
 export default function Dashboard() {
   const stock = useStockData();
+  const [darkMode, setDarkMode] = useState(false);
+
+  useEffect(() => {
+    if (localStorage.getItem('darkMode') === 'true') setDarkMode(true);
+  }, []);
+
+  const toggleDark = () => {
+    setDarkMode(prev => {
+      localStorage.setItem('darkMode', String(!prev));
+      return !prev;
+    });
+  };
+
+  const axisStyle = { fontSize: 14, fill: darkMode ? '#9ca3af' : '#6b7280', fontWeight: 600 };
+  const gridStyle = { stroke: darkMode ? '#374151' : '#e5e7eb', strokeDasharray: '4 4' };
 
   const priceUp = isUp(stock.changeRate);
   const kospiUp = isUp(stock.kospi.changeRate);
@@ -145,232 +157,241 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 md:p-10 font-sans">
-      <div className="flex items-center justify-between mb-10">
-        <div className="flex items-center gap-4">
-          <div className="relative flex h-3 w-3">
-            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${stock.isMarketOpen ? 'bg-green-400' : 'bg-red-400'}`}></span>
-            <span className={`relative inline-flex h-3 w-3 rounded-full ${stock.isMarketOpen ? 'bg-green-500' : 'bg-red-500'}`}></span>
+    <div className={darkMode ? 'dark' : ''}>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-6 md:p-10 font-sans transition-colors duration-300">
+        <div className="flex items-center justify-between mb-10">
+          <div className="flex items-center gap-4">
+            <div className="relative flex h-3 w-3">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${stock.isMarketOpen ? 'bg-green-400' : 'bg-red-400'}`}></span>
+              <span className={`relative inline-flex h-3 w-3 rounded-full ${stock.isMarketOpen ? 'bg-green-500' : 'bg-red-500'}`}></span>
+            </div>
+            <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">IR실 증시 Dashboard</h1>
           </div>
-          <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">IR실 증시 Dashboard</h1>
-        </div>
-        <div className="flex items-center gap-4">
-          {stock.lastUpdated && (
-            <p className="text-sm text-gray-400 font-medium">
-              기준: {stock.lastUpdated.toLocaleTimeString('ko-KR')}
-            </p>
-          )}
-          {stock.error && (
-            <p className="text-sm text-red-500 font-medium">{stock.error}</p>
-          )}
-          <button
-            onClick={stock.refresh}
-            disabled={stock.isLoading || stock.isChartLoading}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-900 text-white text-sm font-semibold disabled:opacity-50 hover:bg-gray-700 transition-colors"
-          >
-            <RefreshCw className={`h-4 w-4 ${stock.isLoading || stock.isChartLoading ? 'animate-spin' : ''}`} />
-            새로고침
-          </button>
-        </div>
-      </div>
-
-      {/* 상단 카드뷰 */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-5 mb-10">
-        {cards.map((card, index) => (
-          <StatCard key={index} {...card} isLoading={stock.isLoading} delay={index * 80} />
-        ))}
-      </div>
-
-      {/* 2x2 차트 그리드 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-
-        {stock.isChartLoading ? (
-          <div className="col-span-2 text-center py-16 text-gray-400 font-medium">
-            당일 차트 데이터 로딩 중...
+          <div className="flex items-center gap-3">
+            {stock.lastUpdated && (
+              <p className="text-sm text-gray-400 dark:text-gray-500 font-medium">
+                기준: {stock.lastUpdated.toLocaleTimeString('ko-KR')}
+              </p>
+            )}
+            {stock.error && (
+              <p className="text-sm text-red-500 font-medium">{stock.error}</p>
+            )}
+            <button
+              onClick={toggleDark}
+              className="flex items-center justify-center w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              aria-label="다크모드 토글"
+            >
+              {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+            <button
+              onClick={stock.refresh}
+              disabled={stock.isLoading || stock.isChartLoading}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-900 dark:bg-gray-700 text-white text-sm font-semibold disabled:opacity-50 hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
+            >
+              <RefreshCw className={`h-4 w-4 ${stock.isLoading || stock.isChartLoading ? 'animate-spin' : ''}`} />
+              새로고침
+            </button>
           </div>
-        ) : (
-          <>
-            {/* 1. 시총 차트 */}
-            <div className="chart-enter bg-white p-7 rounded-2xl shadow-md border border-gray-200" style={{ animationDelay: '0ms' }}>
-              <h3 className="text-xl font-bold text-gray-800 tracking-tight mb-2">1. 시가총액 추이</h3>
-              <p className="text-sm font-medium text-gray-500 mb-6">단위: 억원</p>
-              <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                <AreaChart data={stock.chartHistory} margin={{ top: 10, right: 28, left: 10, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="gradMarketCap" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid {...GRID_STYLE} vertical={false} />
-                  <XAxis dataKey="time" tick={AXIS_STYLE} axisLine={false} tickLine={false} dy={10} />
-                  <YAxis
-                    domain={['auto', 'auto']}
-                    tick={AXIS_STYLE}
-                    axisLine={false}
-                    tickLine={false}
-                    width={65}
-                    tickFormatter={v => v.toLocaleString()}
-                  />
-                  <Tooltip
-                    content={<ChartTooltip valueFormatter={(v: number) => `${v.toLocaleString()}억`} />}
-                    cursor={{ stroke: '#ef4444', strokeWidth: 2, strokeDasharray: '4 4' }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="시가총액"
-                    stroke="#ef4444"
-                    strokeWidth={3}
-                    fill="url(#gradMarketCap)"
-                    dot={(props: any) => {
-                      if (!stock.isMarketOpen) return <g key={props.key} />;
-                      const last = stock.chartHistory.length - 1;
-                      if (props.index !== last) return <g key={props.key} />;
-                      return (
-                        <g key={props.key}>
-                          <circle cx={props.cx} cy={props.cy} r={9} fill="#ef4444" className="live-dot-pulse" />
-                          <circle cx={props.cx} cy={props.cy} r={5} fill="#ef4444" stroke="white" strokeWidth={2} />
-                        </g>
-                      );
-                    }}
-                    activeDot={{ r: 6, fill: '#ef4444', strokeWidth: 3, stroke: 'white' }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+        </div>
 
-            {/* 2. 거래량 차트 */}
-            <div className="chart-enter bg-white p-7 rounded-2xl shadow-md border border-gray-200" style={{ animationDelay: '100ms' }}>
-              <h3 className="text-xl font-bold text-gray-800 tracking-tight mb-2">2. 거래량 추이</h3>
-              <p className="text-sm font-medium text-gray-500 mb-6">단위: 주 (구간 합산)</p>
-              <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                <AreaChart data={stock.chartHistory} margin={{ top: 10, right: 28, left: 10, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="gradVolume" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid {...GRID_STYLE} vertical={false} />
-                  <XAxis dataKey="time" tick={AXIS_STYLE} axisLine={false} tickLine={false} dy={10} />
-                  <YAxis
-                    tick={AXIS_STYLE}
-                    axisLine={false}
-                    tickLine={false}
-                    width={65}
-                    tickFormatter={v => v >= 10000 ? `${(v / 10000).toFixed(0)}만` : v}
-                  />
-                  <Tooltip
-                    content={<ChartTooltip valueFormatter={(v: number) => `${v.toLocaleString()}주`} />}
-                    cursor={{ stroke: '#3b82f6', strokeWidth: 2, strokeDasharray: '4 4' }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="거래량"
-                    stroke="#3b82f6"
-                    strokeWidth={3}
-                    fill="url(#gradVolume)"
-                    dot={(props: any) => {
-                      if (!stock.isMarketOpen) return <g key={props.key} />;
-                      const last = stock.chartHistory.length - 1;
-                      if (props.index !== last) return <g key={props.key} />;
-                      return (
-                        <g key={props.key}>
-                          <circle cx={props.cx} cy={props.cy} r={9} fill="#3b82f6" className="live-dot-pulse" />
-                          <circle cx={props.cx} cy={props.cy} r={5} fill="#3b82f6" stroke="white" strokeWidth={2} />
-                        </g>
-                      );
-                    }}
-                    activeDot={{ r: 6, fill: '#3b82f6', strokeWidth: 3, stroke: 'white' }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+        {/* 상단 카드뷰 */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-5 mb-10">
+          {cards.map((card, index) => (
+            <StatCard key={index} {...card} isLoading={stock.isLoading} delay={index * 80} />
+          ))}
+        </div>
 
-            {/* 3. 등락률 */}
-            <div className="chart-enter bg-white p-7 rounded-2xl shadow-md border border-gray-200" style={{ animationDelay: '200ms' }}>
-              <h3 className="text-xl font-bold text-gray-800 tracking-tight mb-2">3. 주요 게임사 등락률</h3>
-              <p className="text-sm font-medium text-gray-500 mb-6">단위: %</p>
-              <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                <BarChart
-                  data={stock.sectorData}
-                  margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
-                  barCategoryGap="25%"
-                >
-                  <CartesianGrid {...GRID_STYLE} vertical={false} />
-                  <XAxis
-                    dataKey="name"
-                    tick={<GameTick />}
-                    axisLine={false}
-                    tickLine={false}
-                    height={65}
-                  />
-                  <YAxis
-                    tick={AXIS_STYLE}
-                    axisLine={false}
-                    tickLine={false}
-                    width={45}
-                    tickFormatter={v => `${v > 0 ? '+' : ''}${v}`}
-                  />
-                  <ReferenceLine y={0} stroke="#9ca3af" strokeWidth={2} />
-                  <Tooltip
-                    content={<ChartTooltip valueFormatter={(v: number) => `${v > 0 ? '+' : ''}${v}%`} />}
-                    cursor={{ fill: '#f9fafb' }}
-                  />
-                  <Bar dataKey="등락률">
-                    {stock.sectorData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={entry.등락률 >= 0 ? '#ef4444' : '#3b82f6'}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+        {/* 2x2 차트 그리드 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
 
-            {/* 4. 투자자별 순매매 */}
-            <div className="chart-enter bg-white p-7 rounded-2xl shadow-md border border-gray-200" style={{ animationDelay: '300ms' }}>
-              <h3 className="text-xl font-bold text-gray-800 tracking-tight mb-2">4. 투자자별 순매매 동향</h3>
-              <p className="text-sm font-medium text-gray-500 mb-6">단위: 백만원</p>
-              <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                <BarChart data={stock.investorData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }} barCategoryGap="20%">
-                  <CartesianGrid {...GRID_STYLE} vertical={false} />
-                  <XAxis
-                    dataKey="name"
-                    tick={<GameTick />}
-                    axisLine={false}
-                    tickLine={false}
-                    height={65}
-                  />
-                  <YAxis
-                    tick={AXIS_STYLE}
-                    axisLine={false}
-                    tickLine={false}
-                    width={65}
-                    tickFormatter={v => Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}B` : v}
-                  />
-                  <ReferenceLine y={0} stroke="#9ca3af" strokeWidth={2} />
-                  <Tooltip
-                    content={<ChartTooltip valueFormatter={(v: number) => `${v.toLocaleString()}백만`} />}
-                    cursor={{ fill: '#f9fafb' }}
-                  />
-                  <Legend
-                    wrapperStyle={{ fontSize: 14, paddingTop: 15 }}
-                    formatter={(value) => <span style={{ color: '#4b5563', fontWeight: 700 }}>{value}</span>}
-                  />
-                  <Bar dataKey="외국인" fill="#ef4444" fillOpacity={0.9} />
-                  <Bar dataKey="기관" fill="#f59e0b" fillOpacity={0.9} />
-                  <Bar dataKey="개인" fill="#3b82f6" fillOpacity={0.9} />
-                </BarChart>
-              </ResponsiveContainer>
+          {stock.isChartLoading ? (
+            <div className="col-span-2 text-center py-16 text-gray-400 dark:text-gray-600 font-medium">
+              당일 차트 데이터 로딩 중...
             </div>
-          </>
-        )}
+          ) : (
+            <>
+              {/* 1. 시총 차트 */}
+              <div className="chart-enter bg-white dark:bg-gray-900 p-7 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700" style={{ animationDelay: '0ms' }}>
+                <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 tracking-tight mb-2">1. 시가총액 추이</h3>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-500 mb-6">단위: 억원</p>
+                <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+                  <AreaChart data={stock.chartHistory} margin={{ top: 10, right: 28, left: 10, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="gradMarketCap" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.15} />
+                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid {...gridStyle} vertical={false} />
+                    <XAxis dataKey="time" tick={axisStyle} axisLine={false} tickLine={false} dy={10} />
+                    <YAxis
+                      domain={['auto', 'auto']}
+                      tick={axisStyle}
+                      axisLine={false}
+                      tickLine={false}
+                      width={65}
+                      tickFormatter={v => v.toLocaleString()}
+                    />
+                    <Tooltip
+                      content={<ChartTooltip dark={darkMode} valueFormatter={(v: number) => `${v.toLocaleString()}억`} />}
+                      cursor={{ stroke: '#ef4444', strokeWidth: 2, strokeDasharray: '4 4' }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="시가총액"
+                      stroke="#ef4444"
+                      strokeWidth={3}
+                      fill="url(#gradMarketCap)"
+                      dot={(props: any) => {
+                        if (!stock.isMarketOpen) return <g key={props.key} />;
+                        const last = stock.chartHistory.length - 1;
+                        if (props.index !== last) return <g key={props.key} />;
+                        return (
+                          <g key={props.key}>
+                            <circle cx={props.cx} cy={props.cy} r={9} fill="#ef4444" className="live-dot-pulse" />
+                            <circle cx={props.cx} cy={props.cy} r={5} fill="#ef4444" stroke={darkMode ? '#111827' : 'white'} strokeWidth={2} />
+                          </g>
+                        );
+                      }}
+                      activeDot={{ r: 6, fill: '#ef4444', strokeWidth: 3, stroke: darkMode ? '#111827' : 'white' }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
 
+              {/* 2. 거래량 차트 */}
+              <div className="chart-enter bg-white dark:bg-gray-900 p-7 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700" style={{ animationDelay: '100ms' }}>
+                <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 tracking-tight mb-2">2. 거래량 추이</h3>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-500 mb-6">단위: 주 (구간 합산)</p>
+                <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+                  <AreaChart data={stock.chartHistory} margin={{ top: 10, right: 28, left: 10, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="gradVolume" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.15} />
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid {...gridStyle} vertical={false} />
+                    <XAxis dataKey="time" tick={axisStyle} axisLine={false} tickLine={false} dy={10} />
+                    <YAxis
+                      tick={axisStyle}
+                      axisLine={false}
+                      tickLine={false}
+                      width={65}
+                      tickFormatter={v => v >= 10000 ? `${(v / 10000).toFixed(0)}만` : v}
+                    />
+                    <Tooltip
+                      content={<ChartTooltip dark={darkMode} valueFormatter={(v: number) => `${v.toLocaleString()}주`} />}
+                      cursor={{ stroke: '#3b82f6', strokeWidth: 2, strokeDasharray: '4 4' }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="거래량"
+                      stroke="#3b82f6"
+                      strokeWidth={3}
+                      fill="url(#gradVolume)"
+                      dot={(props: any) => {
+                        if (!stock.isMarketOpen) return <g key={props.key} />;
+                        const last = stock.chartHistory.length - 1;
+                        if (props.index !== last) return <g key={props.key} />;
+                        return (
+                          <g key={props.key}>
+                            <circle cx={props.cx} cy={props.cy} r={9} fill="#3b82f6" className="live-dot-pulse" />
+                            <circle cx={props.cx} cy={props.cy} r={5} fill="#3b82f6" stroke={darkMode ? '#111827' : 'white'} strokeWidth={2} />
+                          </g>
+                        );
+                      }}
+                      activeDot={{ r: 6, fill: '#3b82f6', strokeWidth: 3, stroke: darkMode ? '#111827' : 'white' }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* 3. 등락률 */}
+              <div className="chart-enter bg-white dark:bg-gray-900 p-7 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700" style={{ animationDelay: '200ms' }}>
+                <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 tracking-tight mb-2">3. 주요 게임사 등락률</h3>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-500 mb-6">단위: %</p>
+                <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+                  <BarChart
+                    data={stock.sectorData}
+                    margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
+                    barCategoryGap="25%"
+                  >
+                    <CartesianGrid {...gridStyle} vertical={false} />
+                    <XAxis
+                      dataKey="name"
+                      tick={(props) => <GameTick {...props} dark={darkMode} />}
+                      axisLine={false}
+                      tickLine={false}
+                      height={65}
+                    />
+                    <YAxis
+                      tick={axisStyle}
+                      axisLine={false}
+                      tickLine={false}
+                      width={45}
+                      tickFormatter={v => `${v > 0 ? '+' : ''}${v}`}
+                    />
+                    <ReferenceLine y={0} stroke={darkMode ? '#6b7280' : '#9ca3af'} strokeWidth={2} />
+                    <Tooltip
+                      content={<ChartTooltip dark={darkMode} valueFormatter={(v: number) => `${v > 0 ? '+' : ''}${v}%`} />}
+                      cursor={{ fill: darkMode ? '#1f2937' : '#f9fafb' }}
+                    />
+                    <Bar dataKey="등락률">
+                      {stock.sectorData.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={entry.등락률 >= 0 ? '#ef4444' : '#3b82f6'}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* 4. 투자자별 순매매 */}
+              <div className="chart-enter bg-white dark:bg-gray-900 p-7 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700" style={{ animationDelay: '300ms' }}>
+                <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 tracking-tight mb-2">4. 투자자별 순매매 동향</h3>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-500 mb-6">단위: 백만원</p>
+                <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+                  <BarChart data={stock.investorData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }} barCategoryGap="20%">
+                    <CartesianGrid {...gridStyle} vertical={false} />
+                    <XAxis
+                      dataKey="name"
+                      tick={(props) => <GameTick {...props} dark={darkMode} />}
+                      axisLine={false}
+                      tickLine={false}
+                      height={65}
+                    />
+                    <YAxis
+                      tick={axisStyle}
+                      axisLine={false}
+                      tickLine={false}
+                      width={65}
+                      tickFormatter={v => Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}B` : v}
+                    />
+                    <ReferenceLine y={0} stroke={darkMode ? '#6b7280' : '#9ca3af'} strokeWidth={2} />
+                    <Tooltip
+                      content={<ChartTooltip dark={darkMode} valueFormatter={(v: number) => `${v.toLocaleString()}백만`} />}
+                      cursor={{ fill: darkMode ? '#1f2937' : '#f9fafb' }}
+                    />
+                    <Legend
+                      wrapperStyle={{ fontSize: 14, paddingTop: 15 }}
+                      formatter={(value) => <span style={{ color: darkMode ? '#9ca3af' : '#4b5563', fontWeight: 700 }}>{value}</span>}
+                    />
+                    <Bar dataKey="외국인" fill="#ef4444" fillOpacity={0.9} />
+                    <Bar dataKey="기관" fill="#f59e0b" fillOpacity={0.9} />
+                    <Bar dataKey="개인" fill="#3b82f6" fillOpacity={0.9} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </>
+          )}
+
+        </div>
+
+        <p className="mt-10 text-center text-xs text-gray-400 dark:text-gray-600">위메이드 송하민</p>
       </div>
-
-      <p className="mt-10 text-center text-xs text-gray-400">위메이드 송하민</p>
     </div>
   );
 }
