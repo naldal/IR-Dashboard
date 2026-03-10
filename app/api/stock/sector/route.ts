@@ -3,10 +3,16 @@ import { getKisToken } from '@/lib/kisToken';
 
 const STOCKS = [
   { name: '위메이드', code: '112040' },
+  { name: '위메이드맥스', code: '101730' },
+  { name: '위메이드플레이', code: '123420' },
   { name: '크래프톤', code: '259960' },
-  { name: '엔씨소프트', code: '036570' },
   { name: '넷마블', code: '251270' },
+  { name: '시프트업', code: '462870' },
+  { name: '엔씨소프트', code: '036570' },
   { name: '펄어비스', code: '263750' },
+  { name: '카카오게임즈', code: '293490' },
+  { name: '넥슨게임즈', code: '225570' },
+  { name: '컴투스', code: '078340' },
 ];
 
 export async function GET() {

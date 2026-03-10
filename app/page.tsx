@@ -238,7 +238,15 @@ export default function Dashboard() {
                   barCategoryGap="25%"
                 >
                   <CartesianGrid {...GRID_STYLE} vertical={false} />
-                  <XAxis dataKey="name" tick={AXIS_STYLE} axisLine={false} tickLine={false} dy={10} />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 600 }}
+                    axisLine={false}
+                    tickLine={false}
+                    angle={-35}
+                    textAnchor="end"
+                    height={60}
+                  />
                   <YAxis
                     tick={AXIS_STYLE}
                     axisLine={false}
