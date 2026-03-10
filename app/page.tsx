@@ -13,6 +13,20 @@ const AXIS_STYLE = { fontSize: 14, fill: '#6b7280', fontWeight: 600 };
 const GRID_STYLE = { stroke: '#e5e7eb', strokeDasharray: '4 4' };
 const CHART_HEIGHT = 280; // 차트가 덜 답답해 보이도록 높이도 약간 키웠습니다.
 
+const GameTick = ({ x, y, payload }: any) => (
+  <text
+    x={x}
+    y={y}
+    textAnchor="end"
+    transform={`rotate(-35, ${x}, ${y})`}
+    fill={payload.value === '위메이드' ? '#111827' : '#6b7280'}
+    fontSize={13}
+    fontWeight={payload.value === '위메이드' ? 800 : 600}
+  >
+    {payload.value}
+  </text>
+);
+
 const ChartTooltip = ({ active, payload, label, valueFormatter }: any) => {
   if (!active || !payload?.length) return null;
   return (
@@ -240,11 +254,9 @@ export default function Dashboard() {
                   <CartesianGrid {...GRID_STYLE} vertical={false} />
                   <XAxis
                     dataKey="name"
-                    tick={{ fontSize: 13, fill: '#6b7280', fontWeight: 600 }}
+                    tick={<GameTick />}
                     axisLine={false}
                     tickLine={false}
-                    angle={-35}
-                    textAnchor="end"
                     height={65}
                   />
                   <YAxis
@@ -263,11 +275,7 @@ export default function Dashboard() {
                     {stock.sectorData.map((entry, index) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={
-                          entry.name === '위메이드'
-                            ? entry.등락률 >= 0 ? '#ef4444' : '#3b82f6'
-                            : '#d1d5db'
-                        }
+                        fill={entry.등락률 >= 0 ? '#ef4444' : '#3b82f6'}
                       />
                     ))}
                   </Bar>
@@ -284,11 +292,9 @@ export default function Dashboard() {
                   <CartesianGrid {...GRID_STYLE} vertical={false} />
                   <XAxis
                     dataKey="name"
-                    tick={{ fontSize: 13, fill: '#6b7280', fontWeight: 600 }}
+                    tick={<GameTick />}
                     axisLine={false}
                     tickLine={false}
-                    angle={-35}
-                    textAnchor="end"
                     height={65}
                   />
                   <YAxis
@@ -307,21 +313,9 @@ export default function Dashboard() {
                     wrapperStyle={{ fontSize: 14, paddingTop: 15 }}
                     formatter={(value) => <span style={{ color: '#4b5563', fontWeight: 700 }}>{value}</span>}
                   />
-                  <Bar dataKey="외국인" fill="#ef4444">
-                    {stock.investorData.map((entry, i) => (
-                      <Cell key={i} fill={entry.name === '위메이드' ? '#ef4444' : '#d1d5db'} />
-                    ))}
-                  </Bar>
-                  <Bar dataKey="기관" fill="#f59e0b">
-                    {stock.investorData.map((entry, i) => (
-                      <Cell key={i} fill={entry.name === '위메이드' ? '#f59e0b' : '#d1d5db'} />
-                    ))}
-                  </Bar>
-                  <Bar dataKey="개인" fill="#3b82f6">
-                    {stock.investorData.map((entry, i) => (
-                      <Cell key={i} fill={entry.name === '위메이드' ? '#3b82f6' : '#d1d5db'} />
-                    ))}
-                  </Bar>
+                  <Bar dataKey="외국인" fill="#ef4444" fillOpacity={0.9} />
+                  <Bar dataKey="기관" fill="#f59e0b" fillOpacity={0.9} />
+                  <Bar dataKey="개인" fill="#3b82f6" fillOpacity={0.9} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
