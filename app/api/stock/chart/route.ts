@@ -98,6 +98,15 @@ export async function GET() {
         거래량: volSum,
       }));
 
+    // 마지막 포인트의 시가총액을 동시호가 체결 종가 기준으로 교정
+    // (분봉 15:30 = 동시호가 직전 가격, price API hts_avls = 실제 종가 기준 시총)
+    if (result.length > 0) {
+      const actualMarketCap = Number(priceData.output?.hts_avls ?? 0);
+      if (actualMarketCap > 0) {
+        result[result.length - 1].시가총액 = actualMarketCap;
+      }
+    }
+
     return NextResponse.json(result);
   } catch {
     return NextResponse.json({ error: 'failed' }, { status: 500 });
