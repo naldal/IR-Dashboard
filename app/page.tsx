@@ -194,11 +194,11 @@ export default function Dashboard() {
               <h3 className="text-xl font-bold text-gray-800 tracking-tight mb-2">2. 거래량 추이</h3>
               <p className="text-sm font-medium text-gray-500 mb-6">단위: 주 (구간 합산)</p>
               <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                <BarChart data={stock.chartHistory} margin={{ top: 10, right: 10, left: 10, bottom: 0 }} barCategoryGap="30%">
+                <AreaChart data={stock.chartHistory} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                   <defs>
                     <linearGradient id="gradVolume" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.9} />
-                      <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.5} />
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid {...GRID_STYLE} vertical={false} />
@@ -212,10 +212,18 @@ export default function Dashboard() {
                   />
                   <Tooltip
                     content={<ChartTooltip valueFormatter={(v: number) => `${v.toLocaleString()}주`} />}
-                    cursor={{ fill: '#f3f4f6' }}
+                    cursor={{ stroke: '#3b82f6', strokeWidth: 2, strokeDasharray: '4 4' }}
                   />
-                  <Bar dataKey="거래량" fill="url(#gradVolume)" radius={[6, 6, 0, 0]} />
-                </BarChart>
+                  <Area
+                    type="monotone"
+                    dataKey="거래량"
+                    stroke="#3b82f6"
+                    strokeWidth={3}
+                    fill="url(#gradVolume)"
+                    dot={false}
+                    activeDot={{ r: 6, fill: '#3b82f6', strokeWidth: 3, stroke: 'white' }}
+                  />
+                </AreaChart>
               </ResponsiveContainer>
             </div>
 

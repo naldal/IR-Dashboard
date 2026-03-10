@@ -90,13 +90,17 @@ export async function GET() {
       }
     }
 
+    let cumVol = 0;
     const result = Array.from(buckets.entries())
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([time, { price, volSum }]) => ({
-        time,
-        시가총액: sharesOut > 0 ? Math.round((price * sharesOut) / 100_000_000) : 0,
-        거래량: volSum,
-      }));
+      .map(([time, { price, volSum }]) => {
+        cumVol += volSum;
+        return {
+          time,
+          시가총액: sharesOut > 0 ? Math.round((price * sharesOut) / 100_000_000) : 0,
+          거래량: cumVol,
+        };
+      });
 
     // 마지막 포인트의 시가총액을 동시호가 체결 종가 기준으로 교정
     // (분봉 15:30 = 동시호가 직전 가격, price API hts_avls = 실제 종가 기준 시총)
