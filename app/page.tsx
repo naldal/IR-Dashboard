@@ -528,16 +528,6 @@ export default function Dashboard() {
         )}
       </div>
 
-      <div
-        className={`fixed right-4 bottom-4 z-50 rounded-lg border px-3 py-1.5 text-xs font-semibold tabular-nums shadow-sm transition-colors duration-300 ${
-          dark
-            ? 'border-slate-700 bg-slate-900/90 text-slate-200'
-            : 'border-gray-300 bg-white/90 text-gray-700'
-        }`}
-      >
-        화면 너비: {windowWidth}px
-      </div>
-
       <p className={`mt-10 text-center text-xs transition-colors duration-300 ${dark ? 'text-slate-700' : 'text-gray-400'}`}>Powered by 위메이드 송하민 대리</p>
     </div>
   );
