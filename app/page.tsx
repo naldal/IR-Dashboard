@@ -5,11 +5,12 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, Cell, ReferenceLine
 } from 'recharts';
-import { ArrowUpRight, ArrowDownRight, DollarSign, Activity, BarChart3, RefreshCw } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, DollarSign, Activity, BarChart3, Sun, Moon } from 'lucide-react';
 import { useStockData } from '@/hooks/useStockData';
 
 const CHART_HEIGHT = 280;
 const MOBILE_CHART_HEIGHT = 360;
+const COMPANY_CHART_BREAKPOINT = 2000;
 
 // 세로 바 차트용 X축 레이블 (회전)
 const GameTick = ({ x, y, payload, dark }: any) => (
@@ -123,7 +124,9 @@ export default function Dashboard() {
   const [dark, setDark] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
   const windowWidth = useWindowWidth();
-  const isMobile = windowWidth < 640;
+  const useHorizontalCompanyCharts = windowWidth <= COMPANY_CHART_BREAKPOINT;
+  const sectorHorizontalHeight = Math.max(MOBILE_CHART_HEIGHT, stock.sectorData.length * 42 + 28);
+  const investorHorizontalHeight = Math.max(MOBILE_CHART_HEIGHT, stock.investorData.length * 56 + 28);
 
   useEffect(() => {
     const saved = localStorage.getItem('darkMode') === 'true';
@@ -199,11 +202,11 @@ export default function Dashboard() {
 
   return (
     <div className={`min-h-screen p-6 md:p-10 font-sans transition-colors duration-300 ${dark ? 'bg-slate-950' : 'bg-gray-50'}`}>
-      <div className="flex items-center justify-between mb-10">
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <div>
             <h1 className={`text-4xl font-extrabold tracking-tight transition-colors duration-300 ${dark ? 'text-white' : 'text-gray-900'}`}>IR실 증시 현황 대시보드</h1>
-            <div className="mt-2">
+            <div className="mt-5 flex items-center gap-3">
               {stock.isMarketOpen ? (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-200">
                   <span className="relative flex h-2 w-2">
@@ -221,34 +224,41 @@ export default function Dashboard() {
                   장마감
                 </span>
               )}
+              <p className={`text-sm font-medium tabular-nums transition-colors duration-300 ${dark ? 'text-slate-500' : 'text-gray-400'}`}>
+                {currentTime}
+              </p>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <p className={`text-sm font-medium tabular-nums transition-colors duration-300 ${dark ? 'text-slate-500' : 'text-gray-400'}`}>
-            {currentTime}
-          </p>
           {stock.error && <p className="text-sm text-red-500 font-medium">{stock.error}</p>}
           <button
             onClick={toggleDark}
             aria-label="다크모드 토글"
-            className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-300 focus:outline-none ${
-              dark ? 'bg-blue-500' : 'bg-gray-300'
+            aria-pressed={dark}
+            className={`relative inline-flex h-7 w-14 shrink-0 items-center rounded-full transition-colors duration-300 focus:outline-none ${
+              dark ? 'bg-slate-700' : 'bg-amber-200'
             }`}
           >
-            <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-300 ${
-              dark ? 'translate-x-5' : 'translate-x-0.5'
-            }`} />
-          </button>
-          <button
-            onClick={stock.refresh}
-            disabled={stock.isLoading || stock.isChartLoading}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-semibold disabled:opacity-50 transition-colors duration-200 ${
-              dark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-gray-900 hover:bg-gray-700'
-            }`}
-          >
-            <RefreshCw className={`h-4 w-4 ${stock.isLoading || stock.isChartLoading ? 'animate-spin' : ''}`} />
-            새로고침
+            <span className={`pointer-events-none absolute left-1.5 transition-opacity duration-300 ${
+              dark ? 'opacity-35' : 'opacity-100'
+            }`}>
+              <Sun className="h-3.5 w-3.5 text-amber-500" />
+            </span>
+            <span className={`pointer-events-none absolute right-1.5 transition-opacity duration-300 ${
+              dark ? 'opacity-100' : 'opacity-35'
+            }`}>
+              <Moon className={`h-3.5 w-3.5 ${dark ? 'text-slate-200' : 'text-slate-500'}`} />
+            </span>
+            <span className={`inline-flex h-6 w-6 transform items-center justify-center rounded-full bg-white shadow-md transition-transform duration-300 ${
+              dark ? 'translate-x-7' : 'translate-x-0.5'
+            }`}>
+              {dark ? (
+                <Moon className="h-3.5 w-3.5 text-slate-700" />
+              ) : (
+                <Sun className="h-3.5 w-3.5 text-amber-500" />
+              )}
+            </span>
           </button>
         </div>
       </div>
@@ -338,13 +348,21 @@ export default function Dashboard() {
             <div className={`chart-enter ${chartCard}`} style={{ animationDelay: '200ms' }}>
               <h3 className={chartTitle}>3. 주요 게임사 등락률</h3>
               <p className={chartSub}>단위: %</p>
-              <ResponsiveContainer width="100%" height={isMobile ? MOBILE_CHART_HEIGHT : CHART_HEIGHT}>
-                {isMobile ? (
-                  /* 모바일: 가로 바 차트 (회사명 Y축) */
+              <ResponsiveContainer width="100%" height={useHorizontalCompanyCharts ? sectorHorizontalHeight : CHART_HEIGHT}>
+                {useHorizontalCompanyCharts ? (
+                  /* 가로 바 차트: 회사명 고정 노출 */
                   <BarChart layout="vertical" data={stock.sectorData} margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
                     <CartesianGrid {...gridStyle} horizontal={false} />
                     <XAxis type="number" tick={mobileAxisStyle} axisLine={false} tickLine={false} tickFormatter={v => `${v > 0 ? '+' : ''}${v}`} />
-                    <YAxis type="category" dataKey="name" tick={(props) => <HorizontalGameTick {...props} dark={dark} />} axisLine={false} tickLine={false} width={80} />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      tick={(props) => <HorizontalGameTick {...props} dark={dark} />}
+                      axisLine={false}
+                      tickLine={false}
+                      interval={0}
+                      width={96}
+                    />
                     <ReferenceLine x={0} stroke={refLineColor} strokeWidth={2} />
                     <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v > 0 ? '+' : ''}${v}%`} />} cursor={cursorFill} />
                     <Bar dataKey="등락률" radius={[0, 3, 3, 0]}>
@@ -357,7 +375,15 @@ export default function Dashboard() {
                   /* 데스크톱: 세로 바 차트 (회사명 X축 회전) */
                   <BarChart data={stock.sectorData} margin={{ top: 10, right: 10, left: 20, bottom: 0 }} barCategoryGap="25%">
                     <CartesianGrid {...gridStyle} vertical={false} />
-                    <XAxis dataKey="name" tick={(props) => <GameTick {...props} dark={dark} />} axisLine={false} tickLine={false} height={65} />
+                    <XAxis
+                      dataKey="name"
+                      tick={(props) => <GameTick {...props} dark={dark} />}
+                      axisLine={false}
+                      tickLine={false}
+                      interval={0}
+                      minTickGap={0}
+                      height={65}
+                    />
                     <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={45} tickFormatter={v => `${v > 0 ? '+' : ''}${v}`} />
                     <ReferenceLine y={0} stroke={refLineColor} strokeWidth={2} />
                     <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v > 0 ? '+' : ''}${v}%`} />} cursor={{ fill: cursorFill }} />
@@ -375,13 +401,21 @@ export default function Dashboard() {
             <div className={`chart-enter ${chartCard}`} style={{ animationDelay: '300ms' }}>
               <h3 className={chartTitle}>4. 투자자별 순매매 동향</h3>
               <p className={chartSub}>단위: 백만원</p>
-              <ResponsiveContainer width="100%" height={isMobile ? MOBILE_CHART_HEIGHT : CHART_HEIGHT}>
-                {isMobile ? (
-                  /* 모바일: 가로 바 차트 (회사명 Y축) */
+              <ResponsiveContainer width="100%" height={useHorizontalCompanyCharts ? investorHorizontalHeight : CHART_HEIGHT}>
+                {useHorizontalCompanyCharts ? (
+                  /* 가로 바 차트: 회사명 고정 노출 */
                   <BarChart layout="vertical" data={stock.investorData} margin={{ top: 0, right: 20, left: 0, bottom: 0 }} barCategoryGap="20%">
                     <CartesianGrid {...gridStyle} horizontal={false} />
                     <XAxis type="number" tick={mobileAxisStyle} axisLine={false} tickLine={false} tickFormatter={v => Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}B` : String(v)} />
-                    <YAxis type="category" dataKey="name" tick={(props) => <HorizontalGameTick {...props} dark={dark} />} axisLine={false} tickLine={false} width={80} />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      tick={(props) => <HorizontalGameTick {...props} dark={dark} />}
+                      axisLine={false}
+                      tickLine={false}
+                      interval={0}
+                      width={96}
+                    />
                     <ReferenceLine x={0} stroke={refLineColor} strokeWidth={2} />
                     <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v.toLocaleString()}백만`} />} cursor={cursorFill} />
                     <Legend wrapperStyle={{ fontSize: 13, paddingTop: 10 }} formatter={(value) => <span style={{ color: dark ? '#94a3b8' : '#4b5563', fontWeight: 700 }}>{value}</span>} />
@@ -393,7 +427,15 @@ export default function Dashboard() {
                   /* 데스크톱: 세로 바 차트 (회사명 X축 회전) */
                   <BarChart data={stock.investorData} margin={{ top: 10, right: 10, left: 20, bottom: 0 }} barCategoryGap="20%">
                     <CartesianGrid {...gridStyle} vertical={false} />
-                    <XAxis dataKey="name" tick={(props) => <GameTick {...props} dark={dark} />} axisLine={false} tickLine={false} height={65} />
+                    <XAxis
+                      dataKey="name"
+                      tick={(props) => <GameTick {...props} dark={dark} />}
+                      axisLine={false}
+                      tickLine={false}
+                      interval={0}
+                      minTickGap={0}
+                      height={65}
+                    />
                     <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={65} tickFormatter={v => Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}B` : String(v)} />
                     <ReferenceLine y={0} stroke={refLineColor} strokeWidth={2} />
                     <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v.toLocaleString()}백만`} />} cursor={{ fill: cursorFill }} />
