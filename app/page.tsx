@@ -158,9 +158,10 @@ function ValueRoller({ value, className }: { value: string; className: string })
 }
 
 function useWindowWidth() {
-  const [width, setWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+  const [width, setWidth] = useState<number | null>(null);
   useEffect(() => {
     const handler = () => setWidth(window.innerWidth);
+    handler();
     window.addEventListener('resize', handler);
     return () => window.removeEventListener('resize', handler);
   }, []);
@@ -200,7 +201,7 @@ export default function Dashboard() {
   const [dark, setDark] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
   const windowWidth = useWindowWidth();
-  const useHorizontalCompanyCharts = windowWidth <= COMPANY_CHART_BREAKPOINT;
+  const useHorizontalCompanyCharts = windowWidth !== null && windowWidth <= COMPANY_CHART_BREAKPOINT;
   const sectorHorizontalHeight = Math.max(MOBILE_CHART_HEIGHT, stock.sectorData.length * 42 + 28);
   const investorHorizontalHeight = Math.max(MOBILE_CHART_HEIGHT, stock.investorData.length * 56 + 28);
 

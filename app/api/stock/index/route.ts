@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getKisToken } from '@/lib/kisToken';
+import { routeErrorResponse } from '@/lib/routeError';
 
 async function fetchIndex(token: string, code: string) {
   const res = await fetch(
@@ -36,7 +37,7 @@ export async function GET() {
         changeRate: kosdaq.output.bstp_nmix_prdy_ctrt,
       },
     });
-  } catch {
-    return NextResponse.json({ error: 'failed' }, { status: 500 });
+  } catch (error) {
+    return routeErrorResponse('/api/stock/index', error);
   }
 }

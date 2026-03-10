@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getKisToken } from '@/lib/kisToken';
+import { routeErrorResponse } from '@/lib/routeError';
 
 function getKSTTimeString(): string {
   const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
@@ -112,7 +113,7 @@ export async function GET() {
     }
 
     return NextResponse.json(result);
-  } catch {
-    return NextResponse.json({ error: 'failed' }, { status: 500 });
+  } catch (error) {
+    return routeErrorResponse('/api/stock/chart', error);
   }
 }

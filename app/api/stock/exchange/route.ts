@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { routeErrorResponse } from '@/lib/routeError';
 
 export async function GET() {
   try {
@@ -20,7 +21,7 @@ export async function GET() {
       rate: rate.toFixed(2),
       change: change.toFixed(2),
     });
-  } catch {
-    return NextResponse.json({ error: 'failed' }, { status: 500 });
+  } catch (error) {
+    return routeErrorResponse('/api/stock/exchange', error);
   }
 }

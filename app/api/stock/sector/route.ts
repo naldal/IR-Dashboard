@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getKisToken } from '@/lib/kisToken';
+import { routeErrorResponse } from '@/lib/routeError';
 
 const STOCKS = [
   { name: '위메이드', code: '112040' },
@@ -43,7 +44,7 @@ export async function GET() {
     );
 
     return NextResponse.json(results);
-  } catch {
-    return NextResponse.json({ error: 'failed' }, { status: 500 });
+  } catch (error) {
+    return routeErrorResponse('/api/stock/sector', error);
   }
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getKisToken } from '@/lib/kisToken';
+import { routeErrorResponse } from '@/lib/routeError';
 
 export async function GET() {
   try {
@@ -28,7 +29,7 @@ export async function GET() {
       marketCap: o.hts_avls,
       volume: o.acml_vol,
     });
-  } catch {
-    return NextResponse.json({ error: 'failed' }, { status: 500 });
+  } catch (error) {
+    return routeErrorResponse('/api/stock/price', error);
   }
 }
