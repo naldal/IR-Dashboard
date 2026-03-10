@@ -167,7 +167,22 @@ export default function Dashboard() {
             <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${stock.isMarketOpen ? 'bg-green-400' : 'bg-red-400'}`}></span>
             <span className={`relative inline-flex h-3 w-3 rounded-full ${stock.isMarketOpen ? 'bg-green-500' : 'bg-red-500'}`}></span>
           </div>
-          <h1 className={`text-4xl font-extrabold tracking-tight transition-colors duration-300 ${dark ? 'text-white' : 'text-gray-900'}`}>IR실 증시 Dashboard</h1>
+          <div>
+            <h1 className={`text-4xl font-extrabold tracking-tight transition-colors duration-300 ${dark ? 'text-white' : 'text-gray-900'}`}>IR실 증시 현황</h1>
+            <div className="mt-2">
+              {stock.isMarketOpen ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-200">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                  장중
+                </span>
+              ) : (
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${dark ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-400" />
+                  장마감
+                </span>
+              )}
+            </div>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           {stock.lastUpdated && (
