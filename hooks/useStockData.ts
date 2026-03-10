@@ -154,7 +154,7 @@ export function useStockData(): StockState {
 
     if (!checkMarketOpen()) return;
 
-    const quickTimer = setInterval(fetchQuick, 5_000);         // 5초: 가격/지수/환율
+    const quickTimer = setInterval(fetchQuick, 10_000);        // 10초: 가격/지수/환율
     const fullTimer  = setInterval(fetchFull,  5 * 60_000);    // 5분: 전체 갱신
 
     return () => {
