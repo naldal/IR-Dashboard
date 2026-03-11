@@ -16,6 +16,29 @@ const STOCKS = [
   { name: '컴투스', code: '078340' },
 ];
 
+type ChartPoint = {
+  time: string;
+  시가총액: number | null;
+  거래량: number | null;
+};
+
+type DashboardChartState = {
+  lastSuccessfulChart: {
+    dateKey: string;
+    points: ChartPoint[];
+  } | null;
+};
+
+declare global {
+  var __dashboardChartState__: DashboardChartState | undefined;
+}
+
+const dashboardChartState =
+  globalThis.__dashboardChartState__ ??
+  (globalThis.__dashboardChartState__ = {
+    lastSuccessfulChart: null,
+  });
+
 const CHART_BUCKETS = Array.from({ length: 14 }, (_, index) => {
   const minutes = 9 * 60 + index * 30;
   const hours = String(Math.floor(minutes / 60)).padStart(2, '0');
@@ -51,6 +74,9 @@ function getLatestInvestorOutput(
 function getKSTTimeParts() {
   const formatter = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
@@ -58,16 +84,24 @@ function getKSTTimeParts() {
   });
 
   const parts = formatter.formatToParts(new Date());
+  const year = parts.find((part) => part.type === 'year')?.value ?? '0000';
+  const month = parts.find((part) => part.type === 'month')?.value ?? '00';
+  const day = parts.find((part) => part.type === 'day')?.value ?? '00';
   const hour = parts.find((part) => part.type === 'hour')?.value ?? '00';
   const minute = parts.find((part) => part.type === 'minute')?.value ?? '00';
   const second = parts.find((part) => part.type === 'second')?.value ?? '00';
 
   return {
+    dateKey: `${year}-${month}-${day}`,
     hour,
     minute,
     second,
     compact: `${hour}${minute}${second}`,
   };
+}
+
+function hasUsableChartData(points: ChartPoint[] | undefined): points is ChartPoint[] {
+  return Array.isArray(points) && points.some((point) => point.시가총액 !== null || point.거래량 !== null);
 }
 
 function getCurrentChartBucketLabel() {
@@ -238,33 +272,44 @@ async function fetchInvestorData() {
 }
 
 async function fetchChartData(sharesOut: number, actualMarketCap: number) {
-  const allPoints: Record<string, string>[] = [];
   const { compact: kstNow } = getKSTTimeParts();
   const currentBucket = getCurrentChartBucketLabel();
-  let inputHour =
-    kstNow > '153000' ? '153000' : kstNow < '090000' ? '090000' : kstNow;
+  const fetchAllPoints = async (startHour: string) => {
+    const points: Record<string, string>[] = [];
+    let inputHour = startHour;
 
-  for (let i = 0; i < 15; i += 1) {
-    const data = await fetchKisJson<{ output2?: Record<string, string>[] }>(
-      '/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice',
-      {
-        FID_ETC_CLS_CODE: '',
-        FID_COND_MRKT_DIV_CODE: 'J',
-        FID_INPUT_ISCD: '112040',
-        FID_INPUT_HOUR_1: inputHour,
-        FID_PW_DATA_INCU_YN: 'Y',
-      },
-      'FHKST03010200'
-    );
+    for (let i = 0; i < 15; i += 1) {
+      const data = await fetchKisJson<{ output2?: Record<string, string>[] }>(
+        '/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice',
+        {
+          FID_ETC_CLS_CODE: '',
+          FID_COND_MRKT_DIV_CODE: 'J',
+          FID_INPUT_ISCD: '112040',
+          FID_INPUT_HOUR_1: inputHour,
+          FID_PW_DATA_INCU_YN: 'Y',
+        },
+        'FHKST03010200'
+      );
 
-    const points = data.output2 ?? [];
-    if (!points.length) break;
+      const chunk = data.output2 ?? [];
+      if (!chunk.length) break;
 
-    allPoints.push(...points);
+      points.push(...chunk);
 
-    const oldest = points[points.length - 1]?.stck_cntg_hour;
-    if (!oldest || oldest <= '090000') break;
-    inputHour = oldest;
+      const oldest = chunk[chunk.length - 1]?.stck_cntg_hour;
+      if (!oldest || oldest <= '090000') break;
+      inputHour = oldest;
+    }
+
+    return points;
+  };
+
+  const initialHour =
+    kstNow >= '153000' ? '153000' : kstNow < '090000' ? '090000' : kstNow;
+  let allPoints = await fetchAllPoints(initialHour);
+
+  if (!allPoints.length && kstNow >= '153000') {
+    allPoints = await fetchAllPoints('152959');
   }
 
   const seen = new Set<string>();
@@ -299,7 +344,7 @@ async function fetchChartData(sharesOut: number, actualMarketCap: number) {
   }
 
   let cumulativeVolume = 0;
-  const result = CHART_BUCKETS.map((time) => {
+  const result: ChartPoint[] = CHART_BUCKETS.map((time) => {
     const bucket = buckets.get(time);
 
     if (!bucket) {
@@ -355,12 +400,27 @@ export async function GET(request: Request) {
       fetchChartData(price.sharesOut, price.actualMarketCap),
     ]);
 
+    const { dateKey } = getKSTTimeParts();
+    const chart =
+      chartResult.status === 'fulfilled' && hasUsableChartData(chartResult.value)
+        ? chartResult.value
+        : dashboardChartState.lastSuccessfulChart?.dateKey === dateKey
+          ? dashboardChartState.lastSuccessfulChart.points
+          : [];
+
+    if (hasUsableChartData(chart)) {
+      dashboardChartState.lastSuccessfulChart = {
+        dateKey,
+        points: chart,
+      };
+    }
+
     return NextResponse.json({
       price: price.summary,
       index,
       investor: investorResult.status === 'fulfilled' ? investorResult.value : [],
       sector: sectorResult.status === 'fulfilled' ? sectorResult.value : [],
-      chart: chartResult.status === 'fulfilled' ? chartResult.value : [],
+      chart,
     });
   } catch (error) {
     return routeErrorResponse('/api/stock/dashboard', error);

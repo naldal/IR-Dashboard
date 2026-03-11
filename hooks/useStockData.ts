@@ -139,6 +139,10 @@ function getLastChartPointIndex(points: ChartPoint[]) {
   return -1;
 }
 
+function hasUsableChartData(points: ChartPoint[] | undefined): points is ChartPoint[] {
+  return Array.isArray(points) && points.some((point) => point.시가총액 !== null || point.거래량 !== null);
+}
+
 const INITIAL_STATE: Omit<StockState, 'refresh'> = {
   price: '-',
   priceChange: '-',
@@ -260,7 +264,7 @@ export function useStockData(): StockState {
           ? dashboard.investor
           : prev.investorData,
       chartHistory:
-        dashboardResult.status === 'fulfilled' && Array.isArray(dashboard?.chart)
+        dashboardResult.status === 'fulfilled' && hasUsableChartData(dashboard?.chart)
           ? dashboard.chart
           : prev.chartHistory,
       lastUpdated:
