@@ -23,6 +23,7 @@ type AxisTickProps = BaseTickContentProps & {
 
 interface TooltipEntry {
   color?: string;
+  fill?: string;
   name?: string;
   value?: number | string | null;
 }
@@ -123,10 +124,14 @@ const ChartTooltip = ({ active, payload, label, valueFormatter, dark }: ChartToo
       padding: '12px 16px',
       boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
       fontSize: 16,
+      color: dark ? '#e2e8f0' : '#111827',
     }}>
       <p style={{ color: dark ? '#94a3b8' : '#4b5563', fontSize: 14, marginBottom: 8, fontWeight: 700 }}>{label ?? ''}</p>
       {payload.map((entry, i) => (
-        <p key={`${entry.name ?? 'tooltip'}-${i}`} style={{ color: entry.color, fontWeight: 800, margin: '4px 0' }}>
+        <p
+          key={`${entry.name ?? 'tooltip'}-${i}`}
+          style={{ color: entry.color ?? entry.fill ?? (dark ? '#e2e8f0' : '#111827'), fontWeight: 800, margin: '4px 0' }}
+        >
           {entry.name}: {formatTooltipValue(entry.value, valueFormatter)}
         </p>
       ))}
