@@ -24,6 +24,7 @@ export interface StockState {
   priceChange: string;
   changeRate: string;
   marketCap: string;
+  marketCapChange: string;
   volume: string;
   kospi: { value: string; changeRate: string };
   kosdaq: { value: string; changeRate: string };
@@ -46,6 +47,7 @@ interface PriceResponse {
   change?: string;
   changeRate?: string;
   marketCap?: string;
+  marketCapChange?: string;
   volume?: string;
   error?: string;
 }
@@ -142,6 +144,7 @@ const INITIAL_STATE: Omit<StockState, 'refresh'> = {
   priceChange: '-',
   changeRate: '-',
   marketCap: '-',
+  marketCapChange: '-',
   volume: '-',
   kospi: { value: '-', changeRate: '-' },
   kosdaq: { value: '-', changeRate: '-' },
@@ -196,6 +199,7 @@ export function useStockData(): StockState {
         priceChange: price?.change ?? prev.priceChange,
         changeRate: price?.changeRate ?? prev.changeRate,
         marketCap: price?.marketCap ?? prev.marketCap,
+        marketCapChange: price?.marketCapChange ?? prev.marketCapChange,
         volume: price?.volume ?? prev.volume,
         kospi: index?.kospi ?? prev.kospi,
         kosdaq: index?.kosdaq ?? prev.kosdaq,
@@ -239,6 +243,7 @@ export function useStockData(): StockState {
       priceChange: price?.change ?? prev.priceChange,
       changeRate: price?.changeRate ?? prev.changeRate,
       marketCap: price?.marketCap ?? prev.marketCap,
+      marketCapChange: price?.marketCapChange ?? prev.marketCapChange,
       volume: price?.volume ?? prev.volume,
       kospi: index?.kospi ?? prev.kospi,
       kosdaq: index?.kosdaq ?? prev.kosdaq,

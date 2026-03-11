@@ -461,12 +461,16 @@ export default function Dashboard() {
   const cursorFill = dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
 
   const priceUp = isUp(stock.changeRate);
+  const marketCapUp = isUp(stock.marketCapChange);
   const kospiUp = isUp(stock.kospi.changeRate);
   const kosdaqUp = isUp(stock.kosdaq.changeRate);
   const exchangeUp = isUp(stock.exchangeChange);
 
   const marketCapLabel = stock.marketCap !== '-'
     ? `${Number(stock.marketCap).toLocaleString()}억`
+    : '-';
+  const marketCapChangeLabel = stock.marketCapChange !== '-'
+    ? `${marketCapUp ? '+' : ''}${Number(stock.marketCapChange).toLocaleString()}억`
     : '-';
 
   const cards = [
@@ -479,7 +483,8 @@ export default function Dashboard() {
     {
       title: "시가총액",
       value: marketCapLabel,
-      icon: DollarSign, up: priceUp,
+      change: marketCapChangeLabel,
+      icon: DollarSign, up: marketCapUp,
     },
     {
       title: "KOSPI",

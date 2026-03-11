@@ -141,6 +141,12 @@ async function fetchPriceSummary() {
   );
 
   const output = data.output ?? {};
+  const sharesOut = Number(output.lstn_stcn ?? 0);
+  const priceChange = Number(output.prdy_vrss ?? 0);
+  const marketCapChange =
+    sharesOut > 0 && Number.isFinite(priceChange)
+      ? String(Math.round((sharesOut * priceChange) / 100_000_000))
+      : '-';
 
   return {
     summary: {
@@ -148,9 +154,10 @@ async function fetchPriceSummary() {
       change: output.prdy_vrss,
       changeRate: output.prdy_ctrt,
       marketCap: output.hts_avls,
+      marketCapChange,
       volume: output.acml_vol,
     },
-    sharesOut: Number(output.lstn_stcn ?? 0),
+    sharesOut,
     actualMarketCap: Number(output.hts_avls ?? 0),
   };
 }
