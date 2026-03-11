@@ -392,6 +392,16 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {stock.isRefreshing && !stock.isLoading && (
+            <span
+              className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold border ${
+                dark ? 'bg-slate-800 text-sky-200 border-slate-700' : 'bg-sky-50 text-sky-700 border-sky-200'
+              }`}
+            >
+              <span className={`h-2 w-2 rounded-full ${dark ? 'bg-sky-300' : 'bg-sky-500'} animate-pulse`} />
+              업데이트 중
+            </span>
+          )}
           {stock.error && <p className="text-sm text-red-500 font-medium">{stock.error}</p>}
           <button
             onClick={toggleDark}

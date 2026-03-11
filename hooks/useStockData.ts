@@ -35,6 +35,7 @@ export interface StockState {
   lastUpdated: Date | null;
   isLoading: boolean;
   isChartLoading: boolean;
+  isRefreshing: boolean;
   isMarketOpen: boolean;
   error: string | null;
   refresh: () => void;
@@ -152,6 +153,7 @@ const INITIAL_STATE: Omit<StockState, 'refresh'> = {
   lastUpdated: null,
   isLoading: true,
   isChartLoading: true,
+  isRefreshing: false,
   isMarketOpen: false,
   error: null,
 };
@@ -212,8 +214,15 @@ export function useStockData(): StockState {
   }, []);
 
   // 최초 + 5분마다: 전체 데이터 (KIS 대시보드 + 환율)
-  const fetchFull = useCallback(async () => {
-    setState((prev) => ({ ...prev, isLoading: true, isChartLoading: true, error: null }));
+  const fetchFull = useCallback(async (options?: { background?: boolean }) => {
+    const background = options?.background === true;
+
+    setState((prev) =>
+      background
+        ? { ...prev, isRefreshing: true }
+        : { ...prev, isLoading: true, isChartLoading: true, isRefreshing: false, error: null }
+    );
+
     const [dashboardResult, exchangeResult] =
       await Promise.allSettled([
         fetchJson<DashboardFullResponse>('/api/stock/dashboard'),
@@ -255,11 +264,12 @@ export function useStockData(): StockState {
           : prev.lastUpdated,
       isLoading: false,
       isChartLoading: false,
+      isRefreshing: false,
       error: getErrorMessage([dashboardResult, exchangeResult]),
     }));
   }, []);
 
-  const refresh = useCallback(() => { fetchFull(); }, [fetchFull]);
+  const refresh = useCallback(() => { void fetchFull({ background: true }); }, [fetchFull]);
 
   useEffect(() => {
     const syncMarketStatus = () => {
@@ -283,7 +293,7 @@ export function useStockData(): StockState {
     }, 10_000);
     const fullTimer = setInterval(() => {
       syncMarketStatus();
-      void fetchFull();
+      void fetchFull({ background: true });
     }, 5 * 60_000);
 
     return () => {
