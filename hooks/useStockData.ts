@@ -74,10 +74,31 @@ interface DashboardFullResponse extends DashboardQuickResponse {
 }
 
 function checkMarketOpen(): boolean {
-  const now = new Date();
-  const day = now.getDay(); // 0=일, 6=토
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Seoul',
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date());
+
+  const weekday = parts.find((part) => part.type === 'weekday')?.value ?? 'Sun';
+  const hour = Number(parts.find((part) => part.type === 'hour')?.value ?? '0');
+  const minute = Number(parts.find((part) => part.type === 'minute')?.value ?? '0');
+  const dayMap: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+  };
+  const day = dayMap[weekday] ?? 0;
+
   if (day === 0 || day === 6) return false;
-  const t = now.getHours() * 60 + now.getMinutes();
+
+  const t = hour * 60 + minute;
   return t >= 9 * 60 && t <= 15 * 60 + 30;
 }
 
@@ -249,7 +270,9 @@ export function useStockData(): StockState {
     };
 
     syncMarketStatus();
-    void fetchFull();
+    const initialLoadTimer = setTimeout(() => {
+      void fetchFull();
+    }, 0);
 
     const marketTimer = setInterval(syncMarketStatus, 60_000);
     const quickTimer = setInterval(() => {
@@ -264,6 +287,7 @@ export function useStockData(): StockState {
     }, 5 * 60_000);
 
     return () => {
+      clearTimeout(initialLoadTimer);
       clearInterval(marketTimer);
       clearInterval(quickTimer);
       clearInterval(fullTimer);

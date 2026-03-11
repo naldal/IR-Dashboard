@@ -1,30 +1,24 @@
 import { NextResponse } from 'next/server';
-import { getKisToken } from '@/lib/kisToken';
+import { fetchKisApi } from '@/lib/kisToken';
 import { routeErrorResponse } from '@/lib/routeError';
 
-async function fetchIndex(token: string, code: string) {
-  const res = await fetch(
-    `${process.env.KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-index-price` +
-      `?fid_cond_mrkt_div_code=U&fid_input_iscd=${code}`,
+async function fetchIndex(code: string) {
+  const res = await fetchKisApi(
+    '/uapi/domestic-stock/v1/quotations/inquire-index-price',
     {
-      headers: {
-        authorization: `Bearer ${token}`,
-        appkey: process.env.KIS_APP_KEY!,
-        appsecret: process.env.KIS_APP_SECRET!,
-        tr_id: 'FHPUP02100000',
-      },
-      cache: 'no-store',
-    }
+      fid_cond_mrkt_div_code: 'U',
+      fid_input_iscd: code,
+    },
+    'FHPUP02100000'
   );
   return res.json();
 }
 
 export async function GET() {
   try {
-    const token = await getKisToken();
     const [kospi, kosdaq] = await Promise.all([
-      fetchIndex(token, '0001'),
-      fetchIndex(token, '1001'),
+      fetchIndex('0001'),
+      fetchIndex('1001'),
     ]);
 
     return NextResponse.json({

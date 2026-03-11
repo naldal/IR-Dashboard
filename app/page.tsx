@@ -1,10 +1,11 @@
 "use client";
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useSyncExternalStore } from 'react';
 import {
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, Cell, ReferenceLine
 } from 'recharts';
+import type { BaseTickContentProps, CartesianTickItem, DotItemDotProps } from 'recharts';
 import { ArrowUpRight, ArrowDownRight, DollarSign, Activity, BarChart3, Sun, Moon } from 'lucide-react';
 import { useStockData } from '@/hooks/useStockData';
 
@@ -12,36 +13,97 @@ const CHART_HEIGHT = 280;
 const MOBILE_CHART_HEIGHT = 360;
 const COMPANY_CHART_BREAKPOINT = 2000;
 const VALUE_ROLL_DURATION_MS = 280;
+const DARK_MODE_STORAGE_KEY = 'darkMode';
+const DARK_MODE_EVENT = 'dark-mode-change';
+
+type AxisTickProps = BaseTickContentProps & {
+  payload?: CartesianTickItem;
+  dark: boolean;
+};
+
+interface TooltipEntry {
+  color?: string;
+  name?: string;
+  value?: number | string | null;
+}
+
+interface ChartTooltipProps {
+  active?: boolean;
+  payload?: TooltipEntry[];
+  label?: string;
+  valueFormatter?: (value: number) => string;
+  dark: boolean;
+}
+
+type LiveDotProps = DotItemDotProps;
+
+function subscribeDarkMode(onStoreChange: () => void) {
+  if (typeof window === 'undefined') {
+    return () => {};
+  }
+
+  window.addEventListener('storage', onStoreChange);
+  window.addEventListener(DARK_MODE_EVENT, onStoreChange);
+
+  return () => {
+    window.removeEventListener('storage', onStoreChange);
+    window.removeEventListener(DARK_MODE_EVENT, onStoreChange);
+  };
+}
+
+function getDarkModeSnapshot() {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  return localStorage.getItem(DARK_MODE_STORAGE_KEY) === 'true';
+}
+
+function formatTooltipValue(value: TooltipEntry['value'], valueFormatter?: (value: number) => string) {
+  if (typeof value === 'number') {
+    return valueFormatter ? valueFormatter(value) : value.toLocaleString();
+  }
+
+  return value ?? '-';
+}
 
 // 세로 바 차트용 X축 레이블 (회전)
-const GameTick = ({ x, y, payload, dark }: any) => (
-  <text
-    x={x} y={y}
-    textAnchor="end"
-    transform={`rotate(-35, ${x}, ${y})`}
-    fill={payload.value === '위메이드' ? (dark ? '#f1f5f9' : '#111827') : (dark ? '#64748b' : '#6b7280')}
-    fontSize={13}
-    fontWeight={payload.value === '위메이드' ? 800 : 600}
-  >
-    {payload.value}
-  </text>
-);
+const GameTick = ({ x = 0, y = 0, payload, dark }: AxisTickProps) => {
+  const label = payload?.value ?? '';
+
+  return (
+    <text
+      x={x} y={y}
+      textAnchor="end"
+      transform={`rotate(-35, ${x}, ${y})`}
+      fill={label === '위메이드' ? (dark ? '#f1f5f9' : '#111827') : (dark ? '#64748b' : '#6b7280')}
+      fontSize={13}
+      fontWeight={label === '위메이드' ? 800 : 600}
+    >
+      {label}
+    </text>
+  );
+};
 
 // 가로 바 차트용 Y축 레이블
-const HorizontalGameTick = ({ x, y, payload, dark }: any) => (
-  <text
-    x={x} y={y}
-    textAnchor="end"
-    dominantBaseline="middle"
-    fill={payload.value === '위메이드' ? (dark ? '#f1f5f9' : '#111827') : (dark ? '#64748b' : '#6b7280')}
-    fontSize={12}
-    fontWeight={payload.value === '위메이드' ? 800 : 500}
-  >
-    {payload.value}
-  </text>
-);
+const HorizontalGameTick = ({ x = 0, y = 0, payload, dark }: AxisTickProps) => {
+  const label = payload?.value ?? '';
 
-const ChartTooltip = ({ active, payload, label, valueFormatter, dark }: any) => {
+  return (
+    <text
+      x={x} y={y}
+      textAnchor="end"
+      dominantBaseline="middle"
+      fill={label === '위메이드' ? (dark ? '#f1f5f9' : '#111827') : (dark ? '#64748b' : '#6b7280')}
+      fontSize={12}
+      fontWeight={label === '위메이드' ? 800 : 500}
+    >
+      {label}
+    </text>
+  );
+};
+
+const ChartTooltip = ({ active, payload, label, valueFormatter, dark }: ChartTooltipProps) => {
   if (!active || !payload?.length) return null;
   return (
     <div style={{
@@ -52,10 +114,10 @@ const ChartTooltip = ({ active, payload, label, valueFormatter, dark }: any) => 
       boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
       fontSize: 16,
     }}>
-      <p style={{ color: dark ? '#94a3b8' : '#4b5563', fontSize: 14, marginBottom: 8, fontWeight: 700 }}>{label}</p>
-      {payload.map((entry: any, i: number) => (
-        <p key={i} style={{ color: entry.color, fontWeight: 800, margin: '4px 0' }}>
-          {entry.name}: {valueFormatter ? valueFormatter(entry.value) : entry.value.toLocaleString()}
+      <p style={{ color: dark ? '#94a3b8' : '#4b5563', fontSize: 14, marginBottom: 8, fontWeight: 700 }}>{label ?? ''}</p>
+      {payload.map((entry, i) => (
+        <p key={`${entry.name ?? 'tooltip'}-${i}`} style={{ color: entry.color, fontWeight: 800, margin: '4px 0' }}>
+          {entry.name}: {formatTooltipValue(entry.value, valueFormatter)}
         </p>
       ))}
     </div>
@@ -225,7 +287,7 @@ function StatCard({ title, value, change, icon: Icon, up, isLoading, delay, dark
 
 export default function Dashboard() {
   const stock = useStockData();
-  const [dark, setDark] = useState(false);
+  const dark = useSyncExternalStore(subscribeDarkMode, getDarkModeSnapshot, () => false);
   const [currentTime, setCurrentTime] = useState('');
   const windowWidth = useWindowWidth();
   const useHorizontalCompanyCharts = windowWidth !== null && windowWidth <= COMPANY_CHART_BREAKPOINT;
@@ -235,11 +297,6 @@ export default function Dashboard() {
   const lastVolumeIndex = stock.chartHistory.findLastIndex((point) => point.거래량 !== null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('darkMode') === 'true';
-    setDark(saved);
-  }, []);
-
-  useEffect(() => {
     const tick = () => setCurrentTime(new Date().toLocaleTimeString('ko-KR'));
     tick();
     const id = setInterval(tick, 1000);
@@ -247,11 +304,9 @@ export default function Dashboard() {
   }, []);
 
   const toggleDark = () => {
-    setDark(prev => {
-      const next = !prev;
-      localStorage.setItem('darkMode', String(next));
-      return next;
-    });
+    const next = !dark;
+    localStorage.setItem(DARK_MODE_STORAGE_KEY, String(next));
+    window.dispatchEvent(new Event(DARK_MODE_EVENT));
   };
 
   const axisStyle = { fontSize: 14, fill: dark ? '#64748b' : '#6b7280', fontWeight: 600 };
@@ -401,12 +456,14 @@ export default function Dashboard() {
                   <YAxis domain={['auto', 'auto']} tick={axisStyle} axisLine={false} tickLine={false} width={65} tickFormatter={v => v.toLocaleString()} />
                   <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v.toLocaleString()}억`} />} cursor={{ stroke: '#ef4444', strokeWidth: 2, strokeDasharray: '4 4' }} />
                   <Area type="monotone" dataKey="시가총액" stroke="#ef4444" strokeWidth={3} fill="url(#gradMarketCap)" connectNulls={false}
-                    dot={(props: any) => {
-                      if (props.value == null || props.cx == null || props.cy == null) return <g key={props.key} />;
-                      if (!stock.isMarketOpen) return <g key={props.key} />;
-                      if (props.index !== lastMarketCapIndex) return <g key={props.key} />;
+                    dot={(props: LiveDotProps) => {
+                      const key = props.key ?? `market-cap-dot-${props.index ?? 'empty'}`;
+
+                      if (props.value == null || props.cx == null || props.cy == null) return <g key={key} />;
+                      if (!stock.isMarketOpen) return <g key={key} />;
+                      if (props.index !== lastMarketCapIndex) return <g key={key} />;
                       return (
-                        <g key={props.key}>
+                        <g key={key}>
                           <circle cx={props.cx} cy={props.cy} r={9} fill="#ef4444" className="live-dot-pulse" />
                           <circle cx={props.cx} cy={props.cy} r={5} fill="#ef4444" stroke={dark ? '#1e293b' : 'white'} strokeWidth={2} />
                         </g>
@@ -435,12 +492,14 @@ export default function Dashboard() {
                   <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={65} tickFormatter={v => v >= 10000 ? `${(v / 10000).toFixed(0)}만` : v} />
                   <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v.toLocaleString()}주`} />} cursor={{ stroke: '#3b82f6', strokeWidth: 2, strokeDasharray: '4 4' }} />
                   <Area type="monotone" dataKey="거래량" stroke="#3b82f6" strokeWidth={3} fill="url(#gradVolume)" connectNulls={false}
-                    dot={(props: any) => {
-                      if (props.value == null || props.cx == null || props.cy == null) return <g key={props.key} />;
-                      if (!stock.isMarketOpen) return <g key={props.key} />;
-                      if (props.index !== lastVolumeIndex) return <g key={props.key} />;
+                    dot={(props: LiveDotProps) => {
+                      const key = props.key ?? `volume-dot-${props.index ?? 'empty'}`;
+
+                      if (props.value == null || props.cx == null || props.cy == null) return <g key={key} />;
+                      if (!stock.isMarketOpen) return <g key={key} />;
+                      if (props.index !== lastVolumeIndex) return <g key={key} />;
                       return (
-                        <g key={props.key}>
+                        <g key={key}>
                           <circle cx={props.cx} cy={props.cy} r={9} fill="#3b82f6" className="live-dot-pulse" />
                           <circle cx={props.cx} cy={props.cy} r={5} fill="#3b82f6" stroke={dark ? '#1e293b' : 'white'} strokeWidth={2} />
                         </g>

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getKisToken } from '@/lib/kisToken';
+import { fetchKisApi } from '@/lib/kisToken';
 import { routeErrorResponse } from '@/lib/routeError';
 
 function getKSTTimeString(): string {
@@ -12,21 +12,14 @@ function getKSTTimeString(): string {
 
 export async function GET() {
   try {
-    const token = await getKisToken();
-
     // 상장주식수 조회 (시가총액 계산용)
-    const priceRes = await fetch(
-      `${process.env.KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price` +
-        `?fid_cond_mrkt_div_code=J&fid_input_iscd=112040`,
+    const priceRes = await fetchKisApi(
+      '/uapi/domestic-stock/v1/quotations/inquire-price',
       {
-        headers: {
-          authorization: `Bearer ${token}`,
-          appkey: process.env.KIS_APP_KEY!,
-          appsecret: process.env.KIS_APP_SECRET!,
-          tr_id: 'FHKST01010100',
-        },
-        cache: 'no-store',
-      }
+        fid_cond_mrkt_div_code: 'J',
+        fid_input_iscd: '112040',
+      },
+      'FHKST01010100'
     );
     const priceData = await priceRes.json();
     const sharesOut = Number(priceData.output?.lstn_stcn ?? 0);
@@ -39,19 +32,16 @@ export async function GET() {
     const allPoints: Record<string, string>[] = [];
 
     for (let i = 0; i < 15; i++) {
-      const res = await fetch(
-        `${process.env.KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice` +
-          `?FID_ETC_CLS_CODE=&FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=112040` +
-          `&FID_INPUT_HOUR_1=${inputHour}&FID_PW_DATA_INCU_YN=Y`,
+      const res = await fetchKisApi(
+        '/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice',
         {
-          headers: {
-            authorization: `Bearer ${token}`,
-            appkey: process.env.KIS_APP_KEY!,
-            appsecret: process.env.KIS_APP_SECRET!,
-            tr_id: 'FHKST03010200',
-          },
-          cache: 'no-store',
-        }
+          FID_ETC_CLS_CODE: '',
+          FID_COND_MRKT_DIV_CODE: 'J',
+          FID_INPUT_ISCD: '112040',
+          FID_INPUT_HOUR_1: inputHour,
+          FID_PW_DATA_INCU_YN: 'Y',
+        },
+        'FHKST03010200'
       );
       const data = await res.json();
       const points: Record<string, string>[] = data.output2 ?? [];

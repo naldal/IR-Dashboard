@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getKisConfig, getKisToken } from '@/lib/kisToken';
+import { fetchKisApi } from '@/lib/kisToken';
 import { routeErrorResponse } from '@/lib/routeError';
 
 const STOCKS = [
@@ -89,23 +89,11 @@ function getCurrentChartBucketLabel() {
 }
 
 async function fetchKisJson<T>(
-  token: string,
   path: string,
   query: Record<string, string>,
   trId: string
 ): Promise<T> {
-  const { appKey, appSecret, baseUrl } = getKisConfig();
-  const url = `${baseUrl}${path}?${new URLSearchParams(query).toString()}`;
-
-  const response = await fetch(url, {
-    headers: {
-      authorization: `Bearer ${token}`,
-      appkey: appKey,
-      appsecret: appSecret,
-      tr_id: trId,
-    },
-    cache: 'no-store',
-  });
+  const response = await fetchKisApi(path, query, trId);
 
   const text = await response.text();
   let data: Record<string, unknown> = {};
@@ -142,9 +130,8 @@ async function fetchKisJson<T>(
   return data as T;
 }
 
-async function fetchPriceSummary(token: string) {
+async function fetchPriceSummary() {
   const data = await fetchKisJson<{ output?: Record<string, string> }>(
-    token,
     '/uapi/domestic-stock/v1/quotations/inquire-price',
     {
       fid_cond_mrkt_div_code: 'J',
@@ -168,10 +155,9 @@ async function fetchPriceSummary(token: string) {
   };
 }
 
-async function fetchIndexSummary(token: string) {
+async function fetchIndexSummary() {
   const fetchIndex = async (code: string) =>
     fetchKisJson<{ output?: Record<string, string> }>(
-      token,
       '/uapi/domestic-stock/v1/quotations/inquire-index-price',
       {
         fid_cond_mrkt_div_code: 'U',
@@ -194,11 +180,10 @@ async function fetchIndexSummary(token: string) {
   };
 }
 
-async function fetchSectorData(token: string) {
+async function fetchSectorData() {
   return Promise.all(
     STOCKS.map(async (stock) => {
       const data = await fetchKisJson<{ output?: Record<string, string> }>(
-        token,
         '/uapi/domestic-stock/v1/quotations/inquire-price',
         {
           fid_cond_mrkt_div_code: 'J',
@@ -215,11 +200,10 @@ async function fetchSectorData(token: string) {
   );
 }
 
-async function fetchInvestorData(token: string) {
+async function fetchInvestorData() {
   const results = await Promise.allSettled(
     STOCKS.map(async (stock) => {
       const data = await fetchKisJson<{ output?: Record<string, string>[] | Record<string, string> }>(
-        token,
         '/uapi/domestic-stock/v1/quotations/inquire-investor',
         {
           fid_cond_mrkt_div_code: 'J',
@@ -246,7 +230,7 @@ async function fetchInvestorData(token: string) {
   );
 }
 
-async function fetchChartData(token: string, sharesOut: number, actualMarketCap: number) {
+async function fetchChartData(sharesOut: number, actualMarketCap: number) {
   const allPoints: Record<string, string>[] = [];
   const { compact: kstNow } = getKSTTimeParts();
   const currentBucket = getCurrentChartBucketLabel();
@@ -255,7 +239,6 @@ async function fetchChartData(token: string, sharesOut: number, actualMarketCap:
 
   for (let i = 0; i < 15; i += 1) {
     const data = await fetchKisJson<{ output2?: Record<string, string>[] }>(
-      token,
       '/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice',
       {
         FID_ETC_CLS_CODE: '',
@@ -347,10 +330,9 @@ export async function GET(request: Request) {
   const mode = new URL(request.url).searchParams.get('mode');
 
   try {
-    const token = await getKisToken();
     const [price, index] = await Promise.all([
-      fetchPriceSummary(token),
-      fetchIndexSummary(token),
+      fetchPriceSummary(),
+      fetchIndexSummary(),
     ]);
 
     if (mode === 'quick') {
@@ -361,9 +343,9 @@ export async function GET(request: Request) {
     }
 
     const [investorResult, sectorResult, chartResult] = await Promise.allSettled([
-      fetchInvestorData(token),
-      fetchSectorData(token),
-      fetchChartData(token, price.sharesOut, price.actualMarketCap),
+      fetchInvestorData(),
+      fetchSectorData(),
+      fetchChartData(price.sharesOut, price.actualMarketCap),
     ]);
 
     return NextResponse.json({
