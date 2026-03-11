@@ -1,8 +1,14 @@
+import { revalidateTag, unstable_cache } from 'next/cache';
+
 type KisTokenState = {
   cachedToken: { token: string; expiresAt: number } | null;
   pendingTokenPromise: Promise<string> | null;
   pendingForcedRefreshPromise: Promise<string> | null;
 };
+
+const TOKEN_REVALIDATE_SECONDS = 23 * 60 * 60 + 55 * 60;
+const KIS_TOKEN_CACHE_TAG = 'kis-access-token';
+const FORCE_TOKEN_REFRESH = { expire: 0 } as const;
 
 declare global {
   var __kisTokenState__: KisTokenState | undefined;
@@ -87,6 +93,15 @@ async function requestKisToken() {
   };
 }
 
+const loadCachedKisToken = unstable_cache(
+  async () => requestKisToken(),
+  [KIS_TOKEN_CACHE_TAG],
+  {
+    revalidate: TOKEN_REVALIDATE_SECONDS,
+    tags: [KIS_TOKEN_CACHE_TAG],
+  }
+);
+
 export function invalidateKisToken(token?: string) {
   if (!token || kisTokenState.cachedToken?.token === token) {
     kisTokenState.cachedToken = null;
@@ -114,7 +129,8 @@ export async function getKisToken(options?: { forceRefresh?: boolean }): Promise
     }
 
     kisTokenState.pendingForcedRefreshPromise = (async () => {
-      const nextToken = await requestKisToken();
+      revalidateTag(KIS_TOKEN_CACHE_TAG, FORCE_TOKEN_REFRESH);
+      const nextToken = await loadCachedKisToken();
       kisTokenState.cachedToken = nextToken;
       return nextToken.token;
     })();
@@ -128,7 +144,7 @@ export async function getKisToken(options?: { forceRefresh?: boolean }): Promise
   }
 
   kisTokenState.pendingTokenPromise = (async () => {
-    const nextToken = await requestKisToken();
+    const nextToken = await loadCachedKisToken();
     kisTokenState.cachedToken = nextToken;
     return nextToken.token;
   })();
