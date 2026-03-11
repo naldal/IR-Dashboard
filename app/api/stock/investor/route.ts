@@ -54,9 +54,9 @@ export async function GET() {
 
         return {
           name: stock.name,
-          외국인: Number(o.frgn_ntby_tr_pbmn ?? 0),
-          기관: Number(o.orgn_ntby_tr_pbmn ?? 0),
-          개인: Number(o.prsn_ntby_tr_pbmn ?? 0),
+          외국인: Number(o?.frgn_ntby_tr_pbmn ?? 0),
+          기관: Number(o?.orgn_ntby_tr_pbmn ?? 0),
+          개인: Number(o?.prsn_ntby_tr_pbmn ?? 0),
         };
       })
     );
