@@ -582,7 +582,7 @@ export default function Dashboard() {
         {stock.isChartLoading ? (
           <>
             <ChartLoadingCard
-              title="1. 시가총액 추이"
+              title="시가총액 추이"
               subtitle="단위: 억원"
               dark={dark}
               delay={0}
@@ -591,7 +591,7 @@ export default function Dashboard() {
               variant="area"
             />
             <ChartLoadingCard
-              title="2. 거래량 추이"
+              title="거래량 추이"
               subtitle="단위: 주 (구간 합산)"
               dark={dark}
               delay={100}
@@ -600,7 +600,7 @@ export default function Dashboard() {
               variant="area"
             />
             <ChartLoadingCard
-              title="3. 주요 게임사 등락률"
+              title="주요 게임사 등락률"
               subtitle="단위: %"
               dark={dark}
               delay={200}
@@ -609,7 +609,7 @@ export default function Dashboard() {
               variant="bar"
             />
             <ChartLoadingCard
-              title="4. 투자자별 순매매 동향"
+              title="투자자별 순매매 동향"
               subtitle="단위: 백만원"
               dark={dark}
               delay={300}
@@ -622,7 +622,7 @@ export default function Dashboard() {
           <>
             {/* 1. 시총 차트 */}
             <div className={`chart-enter ${chartCard}`} style={{ animationDelay: '0ms' }}>
-              <h3 className={chartTitle}>1. 시가총액 추이</h3>
+              <h3 className={chartTitle}>시가총액 추이</h3>
               <p className={chartSub}>단위: 억원</p>
               <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
                 <AreaChart data={stock.chartHistory} margin={{ top: 10, right: 28, left: 10, bottom: 0 }}>
@@ -658,7 +658,7 @@ export default function Dashboard() {
 
             {/* 2. 거래량 차트 */}
             <div className={`chart-enter ${chartCard}`} style={{ animationDelay: '100ms' }}>
-              <h3 className={chartTitle}>2. 거래량 추이</h3>
+              <h3 className={chartTitle}>거래량 추이</h3>
               <p className={chartSub}>단위: 주 (구간 합산)</p>
               <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
                 <AreaChart data={stock.chartHistory} margin={{ top: 10, right: 28, left: 10, bottom: 0 }}>
@@ -694,7 +694,7 @@ export default function Dashboard() {
 
             {/* 3. 등락률 */}
             <div className={`chart-enter ${chartCard}`} style={{ animationDelay: '200ms' }}>
-              <h3 className={chartTitle}>3. 주요 게임사 등락률</h3>
+              <h3 className={chartTitle}>주요 게임사 등락률</h3>
               <p className={chartSub}>단위: %</p>
               <ResponsiveContainer width="100%" height={useHorizontalCompanyCharts ? sectorHorizontalHeight : CHART_HEIGHT}>
                 {useHorizontalCompanyCharts ? (
@@ -747,7 +747,7 @@ export default function Dashboard() {
 
             {/* 4. 투자자별 순매매 */}
             <div className={`chart-enter ${chartCard}`} style={{ animationDelay: '300ms' }}>
-              <h3 className={chartTitle}>4. 투자자별 순매매 동향</h3>
+              <h3 className={chartTitle}>투자자별 순매매 동향</h3>
               <p className={chartSub}>단위: 백만원</p>
               <ResponsiveContainer width="100%" height={useHorizontalCompanyCharts ? investorHorizontalHeight : CHART_HEIGHT}>
                 {useHorizontalCompanyCharts ? (
