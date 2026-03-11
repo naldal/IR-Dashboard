@@ -462,7 +462,7 @@ export default function Dashboard() {
 
   const cards = [
     {
-      title: "위메이드 종가",
+      title: stock.isMarketOpen ? "위메이드 주가" : "위메이드 종가",
       value: stock.price !== '-' ? `${Number(stock.price).toLocaleString()}원` : '-',
       change: stock.changeRate !== '-' ? `${priceUp ? '+' : ''}${stock.changeRate}%` : '-',
       icon: Activity, up: priceUp,
