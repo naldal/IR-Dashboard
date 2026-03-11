@@ -65,6 +65,24 @@ body {
   animation: fadeSlideIn 0.45s ease forwards;
 }
 
+@keyframes chartLoadingWave {
+  0%, 100% { transform: translateY(0); opacity: 0.78; }
+  50% { transform: translateY(-7px); opacity: 1; }
+}
+.chart-loading-wave {
+  animation: chartLoadingWave 2.4s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes chartLoadingColumn {
+  0%, 100% { transform: scaleY(0.72); opacity: 0.42; }
+  50% { transform: scaleY(1); opacity: 0.95; }
+}
+.chart-loading-column {
+  animation: chartLoadingColumn 1.8s ease-in-out infinite;
+  transform-origin: bottom;
+}
+
 /* Live chart end-dot outer ring pulse */
 @keyframes livePulse {
   0%, 100% { transform: scale(1); opacity: 0.5; }

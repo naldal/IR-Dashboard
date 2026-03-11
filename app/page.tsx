@@ -37,6 +37,16 @@ interface ChartTooltipProps {
 
 type LiveDotProps = DotItemDotProps;
 
+interface ChartLoadingCardProps {
+  title: string;
+  subtitle: string;
+  dark: boolean;
+  delay: number;
+  height: number;
+  accent: 'red' | 'blue' | 'amber';
+  variant: 'area' | 'bar';
+}
+
 function subscribeDarkMode(onStoreChange: () => void) {
   if (typeof window === 'undefined') {
     return () => {};
@@ -285,6 +295,131 @@ function StatCard({ title, value, change, icon: Icon, up, isLoading, delay, dark
   );
 }
 
+function ChartLoadingCard({ title, subtitle, dark, delay, height, accent, variant }: ChartLoadingCardProps) {
+  const accentStyles = {
+    red: {
+      stroke: '#ef4444',
+      fill: dark ? 'rgba(239,68,68,0.18)' : 'rgba(239,68,68,0.14)',
+      badge: dark ? 'bg-red-400/10 text-red-200' : 'bg-red-50 text-red-600',
+      dot: dark ? 'bg-red-300' : 'bg-red-500',
+    },
+    blue: {
+      stroke: '#3b82f6',
+      fill: dark ? 'rgba(59,130,246,0.18)' : 'rgba(59,130,246,0.14)',
+      badge: dark ? 'bg-sky-400/10 text-sky-200' : 'bg-sky-50 text-sky-700',
+      dot: dark ? 'bg-sky-300' : 'bg-sky-500',
+    },
+    amber: {
+      stroke: '#f59e0b',
+      fill: dark ? 'rgba(245,158,11,0.18)' : 'rgba(245,158,11,0.14)',
+      badge: dark ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50 text-amber-700',
+      dot: dark ? 'bg-amber-300' : 'bg-amber-500',
+    },
+  } as const;
+  const accentStyle = accentStyles[accent];
+  const gradientId = `chart-loading-${accent}-${delay}`;
+  const barHeights = [28, 42, 34, 58, 46, 72, 54, 66];
+
+  return (
+    <div
+      className={`chart-enter relative overflow-hidden p-7 rounded-2xl shadow-md border transition-colors duration-300 ${
+        dark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'
+      }`}
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      <div
+        className={`card-loading-sheen pointer-events-none absolute inset-0 ${
+          dark
+            ? 'bg-[linear-gradient(110deg,transparent,rgba(148,163,184,0.08),transparent)]'
+            : 'bg-[linear-gradient(110deg,transparent,rgba(59,130,246,0.09),transparent)]'
+        }`}
+      />
+
+      <div className="relative">
+        <h3 className={`text-xl font-bold tracking-tight mb-2 transition-colors duration-300 ${dark ? 'text-slate-100' : 'text-gray-800'}`}>{title}</h3>
+        <p className={`text-sm font-medium mb-6 transition-colors duration-300 ${dark ? 'text-slate-500' : 'text-gray-400'}`}>{subtitle}</p>
+
+        <div
+          className={`relative overflow-hidden rounded-2xl border ${
+            dark ? 'border-slate-700 bg-slate-900/60' : 'border-gray-200 bg-gray-50/90'
+          }`}
+          style={{ height }}
+        >
+          <div className="absolute inset-0 flex flex-col justify-between px-6 py-6">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div
+                key={`grid-row-${index}`}
+                className={`h-px w-full ${dark ? 'bg-slate-800/90' : 'bg-gray-200'}`}
+              />
+            ))}
+          </div>
+          <div className="absolute inset-0 flex justify-between px-8 py-6">
+            {Array.from({ length: 5 }).map((_, index) => (
+              <div
+                key={`grid-col-${index}`}
+                className={`h-full w-px ${dark ? 'bg-slate-800/60' : 'bg-gray-200/80'}`}
+              />
+            ))}
+          </div>
+
+          {variant === 'area' ? (
+            <svg viewBox="0 0 520 260" className="absolute inset-0 h-full w-full">
+              <defs>
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={accentStyle.fill} />
+                  <stop offset="100%" stopColor="transparent" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M 28 174 C 74 146, 116 186, 164 132 S 254 90, 320 106 S 432 154, 492 74 L 492 220 L 28 220 Z"
+                fill={`url(#${gradientId})`}
+                className="chart-loading-wave"
+                style={{ animationDelay: `${delay + 40}ms` }}
+              />
+              <path
+                d="M 28 174 C 74 146, 116 186, 164 132 S 254 90, 320 106 S 432 154, 492 74"
+                fill="none"
+                stroke={accentStyle.stroke}
+                strokeWidth="4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="chart-loading-wave"
+                style={{ animationDelay: `${delay + 120}ms` }}
+              />
+            </svg>
+          ) : (
+            <div className="absolute inset-x-6 bottom-10 top-8 flex items-end justify-between gap-3">
+              {barHeights.map((barHeight, index) => (
+                <div
+                  key={`bar-skeleton-${index}`}
+                  className="chart-loading-column rounded-t-xl"
+                  style={{
+                    height: `${barHeight}%`,
+                    width: `${100 / (barHeights.length + 2)}%`,
+                    background: accentStyle.fill,
+                    animationDelay: `${delay + index * 90}ms`,
+                  }}
+                />
+              ))}
+            </div>
+          )}
+
+          <div className={`absolute inset-x-6 bottom-4 flex items-center justify-between text-[10px] font-semibold tracking-[0.08em] ${dark ? 'text-slate-500' : 'text-gray-400'}`}>
+            <span>09:00</span>
+            <span>12:00</span>
+            <span>15:30</span>
+          </div>
+        </div>
+
+        <div className={`mt-4 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold ${accentStyle.badge}`}>
+          <span className={`h-2 w-2 rounded-full ${accentStyle.dot} animate-pulse`} />
+          실시간 차트 준비 중
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const stock = useStockData();
   const dark = useSyncExternalStore(subscribeDarkMode, getDarkModeSnapshot, () => false);
@@ -293,6 +428,7 @@ export default function Dashboard() {
   const useHorizontalCompanyCharts = windowWidth !== null && windowWidth <= COMPANY_CHART_BREAKPOINT;
   const sectorHorizontalHeight = Math.max(MOBILE_CHART_HEIGHT, stock.sectorData.length * 42 + 28);
   const investorHorizontalHeight = Math.max(MOBILE_CHART_HEIGHT, stock.investorData.length * 56 + 28);
+  const chartLoadingHeight = useHorizontalCompanyCharts ? MOBILE_CHART_HEIGHT : CHART_HEIGHT;
   const lastMarketCapIndex = stock.chartHistory.findLastIndex((point) => point.시가총액 !== null);
   const lastVolumeIndex = stock.chartHistory.findLastIndex((point) => point.거래량 !== null);
 
@@ -444,9 +580,44 @@ export default function Dashboard() {
       {/* 2x2 차트 그리드 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {stock.isChartLoading ? (
-          <div className={`col-span-2 text-center py-16 font-medium transition-colors duration-300 ${dark ? 'text-slate-600' : 'text-gray-400'}`}>
-            당일 차트 데이터 로딩 중...
-          </div>
+          <>
+            <ChartLoadingCard
+              title="1. 시가총액 추이"
+              subtitle="단위: 억원"
+              dark={dark}
+              delay={0}
+              height={chartLoadingHeight}
+              accent="red"
+              variant="area"
+            />
+            <ChartLoadingCard
+              title="2. 거래량 추이"
+              subtitle="단위: 주 (구간 합산)"
+              dark={dark}
+              delay={100}
+              height={chartLoadingHeight}
+              accent="blue"
+              variant="area"
+            />
+            <ChartLoadingCard
+              title="3. 주요 게임사 등락률"
+              subtitle="단위: %"
+              dark={dark}
+              delay={200}
+              height={chartLoadingHeight}
+              accent="amber"
+              variant="bar"
+            />
+            <ChartLoadingCard
+              title="4. 투자자별 순매매 동향"
+              subtitle="단위: 백만원"
+              dark={dark}
+              delay={300}
+              height={chartLoadingHeight}
+              accent="blue"
+              variant="bar"
+            />
+          </>
         ) : (
           <>
             {/* 1. 시총 차트 */}
