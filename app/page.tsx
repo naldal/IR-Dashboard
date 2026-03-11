@@ -246,7 +246,7 @@ function useWindowWidth() {
 }
 
 interface CardProps {
-  title: string; value: string; change: string;
+  title: string; value: string; change?: string;
   icon: React.ElementType; up: boolean; isLoading: boolean; delay: number; dark: boolean;
 }
 function StatCard({ title, value, change, icon: Icon, up, isLoading, delay, dark }: CardProps) {
@@ -292,10 +292,14 @@ function StatCard({ title, value, change, icon: Icon, up, isLoading, delay, dark
         value={value}
         className={`relative text-3xl font-extrabold tabular-nums transition-colors duration-300 ${dark ? 'text-white' : 'text-gray-900'} ${isLoading ? 'animate-pulse' : ''}`}
       />
-      <div className={`relative text-base font-bold mt-3 flex items-center ${up ? 'text-red-500' : 'text-blue-500'}`}>
-        {up ? <ArrowUpRight className="h-5 w-5 mr-1" strokeWidth={3} /> : <ArrowDownRight className="h-5 w-5 mr-1" strokeWidth={3} />}
-        {change}
-      </div>
+      {change ? (
+        <div className={`relative text-base font-bold mt-3 flex items-center ${up ? 'text-red-500' : 'text-blue-500'}`}>
+          {up ? <ArrowUpRight className="h-5 w-5 mr-1" strokeWidth={3} /> : <ArrowDownRight className="h-5 w-5 mr-1" strokeWidth={3} />}
+          {change}
+        </div>
+      ) : (
+        <div className="mt-3 h-6" aria-hidden="true" />
+      )}
     </div>
   );
 }
@@ -475,7 +479,6 @@ export default function Dashboard() {
     {
       title: "시가총액",
       value: marketCapLabel,
-      change: stock.priceChange !== '-' ? `${priceUp ? '+' : ''}${Number(stock.priceChange).toLocaleString()}원` : '-',
       icon: DollarSign, up: priceUp,
     },
     {
