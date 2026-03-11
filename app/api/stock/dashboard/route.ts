@@ -152,7 +152,7 @@ async function fetchSectorData(token: string) {
 }
 
 async function fetchInvestorData(token: string) {
-  return Promise.all(
+  const results = await Promise.allSettled(
     STOCKS.map(async (stock) => {
       const data = await fetchKisJson<{ output?: Record<string, string>[] | Record<string, string> }>(
         token,
@@ -173,6 +173,12 @@ async function fetchInvestorData(token: string) {
         개인: Number(output?.prsn_ntby_tr_pbmn ?? 0),
       };
     })
+  );
+
+  return results.map((result, i) =>
+    result.status === 'fulfilled'
+      ? result.value
+      : { name: STOCKS[i].name, 외국인: 0, 기관: 0, 개인: 0 }
   );
 }
 
@@ -274,7 +280,7 @@ export async function GET(request: Request) {
       });
     }
 
-    const [investor, sector, chart] = await Promise.all([
+    const [investorResult, sectorResult, chartResult] = await Promise.allSettled([
       fetchInvestorData(token),
       fetchSectorData(token),
       fetchChartData(token, price.sharesOut, price.actualMarketCap),
@@ -283,9 +289,9 @@ export async function GET(request: Request) {
     return NextResponse.json({
       price: price.summary,
       index,
-      investor,
-      sector,
-      chart,
+      investor: investorResult.status === 'fulfilled' ? investorResult.value : [],
+      sector: sectorResult.status === 'fulfilled' ? sectorResult.value : [],
+      chart: chartResult.status === 'fulfilled' ? chartResult.value : [],
     });
   } catch (error) {
     return routeErrorResponse('/api/stock/dashboard', error);
