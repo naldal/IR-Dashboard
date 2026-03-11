@@ -40,6 +40,22 @@ body {
   animation: fadeSlideUp 0.4s ease forwards;
 }
 
+@keyframes cardLoadingSheen {
+  0% { transform: translateX(-140%); }
+  100% { transform: translateX(140%); }
+}
+.card-loading-sheen {
+  animation: cardLoadingSheen 1.8s ease-in-out infinite;
+}
+
+@keyframes cardLoadingBar {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(420%); }
+}
+.card-loading-bar {
+  animation: cardLoadingBar 1.3s ease-in-out infinite;
+}
+
 /* Chart section fade-in */
 @keyframes fadeSlideIn {
   from { opacity: 0; transform: translateY(12px); }

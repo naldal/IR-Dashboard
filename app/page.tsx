@@ -175,20 +175,47 @@ interface CardProps {
 function StatCard({ title, value, change, icon: Icon, up, isLoading, delay, dark }: CardProps) {
   return (
     <div
-      className={`card-enter p-6 rounded-2xl shadow-md border flex flex-col transition-colors duration-300 ${
+      className={`card-enter relative overflow-hidden p-6 rounded-2xl shadow-md border flex flex-col transition-colors duration-300 ${
         dark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'
       }`}
       style={{ animationDelay: `${delay}ms` }}
     >
-      <div className="flex justify-between items-center mb-4">
-        <h3 className={`text-lg font-bold transition-colors duration-300 ${dark ? 'text-slate-400' : 'text-gray-500'}`}>{title}</h3>
+      {isLoading && (
+        <>
+          <div
+            className={`card-loading-sheen pointer-events-none absolute inset-0 ${
+              dark
+                ? 'bg-[linear-gradient(110deg,transparent,rgba(148,163,184,0.08),transparent)]'
+                : 'bg-[linear-gradient(110deg,transparent,rgba(59,130,246,0.09),transparent)]'
+            }`}
+          />
+          <div className="pointer-events-none absolute inset-x-6 bottom-0 h-1 overflow-hidden rounded-full">
+            <div className={`card-loading-bar h-full w-24 rounded-full ${dark ? 'bg-sky-300/80' : 'bg-sky-500/80'}`} />
+          </div>
+        </>
+      )}
+
+      <div className="relative flex justify-between items-center mb-4">
+        <div className="flex flex-col gap-2">
+          <h3 className={`text-lg font-bold transition-colors duration-300 ${dark ? 'text-slate-400' : 'text-gray-500'}`}>{title}</h3>
+          {isLoading && (
+            <span
+              className={`inline-flex w-fit items-center gap-2 rounded-full px-2.5 py-1 text-[11px] font-bold tracking-[0.08em] ${
+                dark ? 'bg-sky-400/10 text-sky-200' : 'bg-sky-50 text-sky-700'
+              }`}
+            >
+              <span className={`h-2 w-2 rounded-full ${dark ? 'bg-sky-300' : 'bg-sky-500'} animate-pulse`} />
+              업데이트 중
+            </span>
+          )}
+        </div>
         <Icon className={`h-6 w-6 transition-colors duration-300 ${dark ? 'text-slate-600' : 'text-gray-300'}`} />
       </div>
       <ValueRoller
         value={value}
-        className={`text-3xl font-extrabold tabular-nums transition-colors duration-300 ${dark ? 'text-white' : 'text-gray-900'} ${isLoading ? 'animate-pulse' : ''}`}
+        className={`relative text-3xl font-extrabold tabular-nums transition-colors duration-300 ${dark ? 'text-white' : 'text-gray-900'} ${isLoading ? 'animate-pulse' : ''}`}
       />
-      <div className={`text-base font-bold mt-3 flex items-center ${up ? 'text-red-500' : 'text-blue-500'}`}>
+      <div className={`relative text-base font-bold mt-3 flex items-center ${up ? 'text-red-500' : 'text-blue-500'}`}>
         {up ? <ArrowUpRight className="h-5 w-5 mr-1" strokeWidth={3} /> : <ArrowDownRight className="h-5 w-5 mr-1" strokeWidth={3} />}
         {change}
       </div>
@@ -204,6 +231,8 @@ export default function Dashboard() {
   const useHorizontalCompanyCharts = windowWidth !== null && windowWidth <= COMPANY_CHART_BREAKPOINT;
   const sectorHorizontalHeight = Math.max(MOBILE_CHART_HEIGHT, stock.sectorData.length * 42 + 28);
   const investorHorizontalHeight = Math.max(MOBILE_CHART_HEIGHT, stock.investorData.length * 56 + 28);
+  const lastMarketCapIndex = stock.chartHistory.findLastIndex((point) => point.시가총액 !== null);
+  const lastVolumeIndex = stock.chartHistory.findLastIndex((point) => point.거래량 !== null);
 
   useEffect(() => {
     const saved = localStorage.getItem('darkMode') === 'true';
@@ -371,10 +400,11 @@ export default function Dashboard() {
                   <XAxis dataKey="time" tick={axisStyle} axisLine={false} tickLine={false} dy={10} padding={{ left: 20, right: 20 }} />
                   <YAxis domain={['auto', 'auto']} tick={axisStyle} axisLine={false} tickLine={false} width={65} tickFormatter={v => v.toLocaleString()} />
                   <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v.toLocaleString()}억`} />} cursor={{ stroke: '#ef4444', strokeWidth: 2, strokeDasharray: '4 4' }} />
-                  <Area type="monotone" dataKey="시가총액" stroke="#ef4444" strokeWidth={3} fill="url(#gradMarketCap)"
+                  <Area type="monotone" dataKey="시가총액" stroke="#ef4444" strokeWidth={3} fill="url(#gradMarketCap)" connectNulls={false}
                     dot={(props: any) => {
+                      if (props.value == null || props.cx == null || props.cy == null) return <g key={props.key} />;
                       if (!stock.isMarketOpen) return <g key={props.key} />;
-                      if (props.index !== stock.chartHistory.length - 1) return <g key={props.key} />;
+                      if (props.index !== lastMarketCapIndex) return <g key={props.key} />;
                       return (
                         <g key={props.key}>
                           <circle cx={props.cx} cy={props.cy} r={9} fill="#ef4444" className="live-dot-pulse" />
@@ -404,10 +434,11 @@ export default function Dashboard() {
                   <XAxis dataKey="time" tick={axisStyle} axisLine={false} tickLine={false} dy={10} padding={{ left: 20, right: 20 }} />
                   <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={65} tickFormatter={v => v >= 10000 ? `${(v / 10000).toFixed(0)}만` : v} />
                   <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v.toLocaleString()}주`} />} cursor={{ stroke: '#3b82f6', strokeWidth: 2, strokeDasharray: '4 4' }} />
-                  <Area type="monotone" dataKey="거래량" stroke="#3b82f6" strokeWidth={3} fill="url(#gradVolume)"
+                  <Area type="monotone" dataKey="거래량" stroke="#3b82f6" strokeWidth={3} fill="url(#gradVolume)" connectNulls={false}
                     dot={(props: any) => {
+                      if (props.value == null || props.cx == null || props.cy == null) return <g key={props.key} />;
                       if (!stock.isMarketOpen) return <g key={props.key} />;
-                      if (props.index !== stock.chartHistory.length - 1) return <g key={props.key} />;
+                      if (props.index !== lastVolumeIndex) return <g key={props.key} />;
                       return (
                         <g key={props.key}>
                           <circle cx={props.cx} cy={props.cy} r={9} fill="#3b82f6" className="live-dot-pulse" />

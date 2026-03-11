@@ -3,8 +3,8 @@ import { useEffect, useState, useCallback } from 'react';
 
 export interface ChartPoint {
   time: string;
-  시가총액: number;
-  거래량: number;
+  시가총액: number | null;
+  거래량: number | null;
 }
 
 export interface SectorEntry {
@@ -105,6 +105,16 @@ function getErrorMessage(results: PromiseSettledResult<unknown>[]) {
   return uniqueMessages.length > 0 ? uniqueMessages.join(' / ') : null;
 }
 
+function getLastChartPointIndex(points: ChartPoint[]) {
+  for (let i = points.length - 1; i >= 0; i -= 1) {
+    if (points[i].시가총액 !== null || points[i].거래량 !== null) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
 const INITIAL_STATE: Omit<StockState, 'refresh'> = {
   price: '-',
   priceChange: '-',
@@ -141,11 +151,18 @@ export function useStockData(): StockState {
       const index = dashboard?.index ?? null;
       const exchange = exchangeResult.status === 'fulfilled' ? exchangeResult.value : null;
       const newMarketCap = Number(price?.marketCap ?? 0);
+      const newVolume = Number(price?.volume ?? 0);
+      const latestChartIndex = getLastChartPointIndex(prev.chartHistory);
       const updatedChart =
-        prev.chartHistory.length > 0 && newMarketCap > 0
+        latestChartIndex >= 0 && (newMarketCap > 0 || newVolume > 0)
           ? [
-              ...prev.chartHistory.slice(0, -1),
-              { ...prev.chartHistory[prev.chartHistory.length - 1], 시가총액: newMarketCap },
+              ...prev.chartHistory.slice(0, latestChartIndex),
+              {
+                ...prev.chartHistory[latestChartIndex],
+                시가총액: newMarketCap > 0 ? newMarketCap : prev.chartHistory[latestChartIndex].시가총액,
+                거래량: newVolume > 0 ? newVolume : prev.chartHistory[latestChartIndex].거래량,
+              },
+              ...prev.chartHistory.slice(latestChartIndex + 1),
             ]
           : prev.chartHistory;
       const errorMessage = getErrorMessage([dashboardResult, exchangeResult]);

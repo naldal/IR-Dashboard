@@ -16,12 +16,76 @@ const STOCKS = [
   { name: '컴투스', code: '078340' },
 ];
 
-function getKSTTimeString(): string {
-  const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
-  const h = String(kst.getUTCHours()).padStart(2, '0');
-  const m = String(kst.getUTCMinutes()).padStart(2, '0');
-  const s = String(kst.getUTCSeconds()).padStart(2, '0');
-  return `${h}${m}${s}`;
+const CHART_BUCKETS = Array.from({ length: 14 }, (_, index) => {
+  const minutes = 9 * 60 + index * 30;
+  const hours = String(Math.floor(minutes / 60)).padStart(2, '0');
+  const mins = String(minutes % 60).padStart(2, '0');
+  return `${hours}:${mins}`;
+});
+
+function parseKisNumber(value: unknown): number {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (typeof value !== 'string') return 0;
+
+  const normalized = value.replace(/,/g, '').trim();
+  if (!normalized) return 0;
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function getLatestInvestorOutput(
+  output: Record<string, string>[] | Record<string, string> | undefined
+) {
+  if (!Array.isArray(output)) {
+    return output;
+  }
+
+  return output.find((entry) =>
+    [entry.frgn_ntby_tr_pbmn, entry.orgn_ntby_tr_pbmn, entry.prsn_ntby_tr_pbmn].some(
+      (value) => typeof value === 'string' && value.trim() !== ''
+  )
+  ) ?? output[0];
+}
+
+function getKSTTimeParts() {
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Seoul',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  });
+
+  const parts = formatter.formatToParts(new Date());
+  const hour = parts.find((part) => part.type === 'hour')?.value ?? '00';
+  const minute = parts.find((part) => part.type === 'minute')?.value ?? '00';
+  const second = parts.find((part) => part.type === 'second')?.value ?? '00';
+
+  return {
+    hour,
+    minute,
+    second,
+    compact: `${hour}${minute}${second}`,
+  };
+}
+
+function getCurrentChartBucketLabel() {
+  const { hour, minute } = getKSTTimeParts();
+  const totalMinutes = Number(hour) * 60 + Number(minute);
+
+  if (totalMinutes < 9 * 60) {
+    return null;
+  }
+
+  if (totalMinutes >= 15 * 60 + 30) {
+    return CHART_BUCKETS[CHART_BUCKETS.length - 1];
+  }
+
+  const bucketMinutes = Math.floor(totalMinutes / 30) * 30;
+  const bucketHour = String(Math.floor(bucketMinutes / 60)).padStart(2, '0');
+  const bucketMinute = String(bucketMinutes % 60).padStart(2, '0');
+  return `${bucketHour}:${bucketMinute}`;
 }
 
 async function fetchKisJson<T>(
@@ -164,13 +228,13 @@ async function fetchInvestorData(token: string) {
         'FHKST01010900'
       );
 
-      const output = Array.isArray(data.output) ? data.output[0] : data.output;
+      const output = getLatestInvestorOutput(data.output);
 
       return {
         name: stock.name,
-        외국인: Number(output?.frgn_ntby_tr_pbmn ?? 0),
-        기관: Number(output?.orgn_ntby_tr_pbmn ?? 0),
-        개인: Number(output?.prsn_ntby_tr_pbmn ?? 0),
+        외국인: parseKisNumber(output?.frgn_ntby_tr_pbmn),
+        기관: parseKisNumber(output?.orgn_ntby_tr_pbmn),
+        개인: parseKisNumber(output?.prsn_ntby_tr_pbmn),
       };
     })
   );
@@ -184,7 +248,8 @@ async function fetchInvestorData(token: string) {
 
 async function fetchChartData(token: string, sharesOut: number, actualMarketCap: number) {
   const allPoints: Record<string, string>[] = [];
-  const kstNow = getKSTTimeString();
+  const { compact: kstNow } = getKSTTimeParts();
+  const currentBucket = getCurrentChartBucketLabel();
   let inputHour =
     kstNow > '153000' ? '153000' : kstNow < '090000' ? '090000' : kstNow;
 
@@ -244,20 +309,35 @@ async function fetchChartData(token: string, sharesOut: number, actualMarketCap:
   }
 
   let cumulativeVolume = 0;
-  const result = Array.from(buckets.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([time, { price, volume }]) => {
-      cumulativeVolume += volume;
+  const result = CHART_BUCKETS.map((time) => {
+    const bucket = buckets.get(time);
 
+    if (!bucket) {
       return {
         time,
-        시가총액: sharesOut > 0 ? Math.round((price * sharesOut) / 100_000_000) : 0,
-        거래량: cumulativeVolume,
+        시가총액: null,
+        거래량: null,
       };
-    });
+    }
 
-  if (result.length > 0 && actualMarketCap > 0) {
-    result[result.length - 1].시가총액 = actualMarketCap;
+    cumulativeVolume += bucket.volume;
+
+    const marketCap =
+      sharesOut > 0 ? Math.round((bucket.price * sharesOut) / 100_000_000) : null;
+    const isFutureBucket = currentBucket !== null && time > currentBucket;
+
+    return {
+      time,
+      시가총액: isFutureBucket ? null : marketCap,
+      거래량: isFutureBucket ? null : cumulativeVolume,
+    };
+  });
+
+  if (currentBucket && actualMarketCap > 0) {
+    const currentBucketEntry = result.find((entry) => entry.time === currentBucket);
+    if (currentBucketEntry && currentBucketEntry.시가총액 !== null) {
+      currentBucketEntry.시가총액 = actualMarketCap;
+    }
   }
 
   return result;

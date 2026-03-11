@@ -16,6 +16,20 @@ const STOCKS = [
   { name: '컴투스', code: '078340' },
 ];
 
+function getLatestInvestorOutput(
+  output: Record<string, string>[] | Record<string, string> | undefined
+) {
+  if (!Array.isArray(output)) {
+    return output;
+  }
+
+  return output.find((entry) =>
+    [entry.frgn_ntby_tr_pbmn, entry.orgn_ntby_tr_pbmn, entry.prsn_ntby_tr_pbmn].some(
+      (value) => typeof value === 'string' && value.trim() !== ''
+    )
+  ) ?? output[0];
+}
+
 export async function GET() {
   try {
     const token = await getKisToken();
@@ -36,7 +50,7 @@ export async function GET() {
           }
         );
         const data = await res.json();
-        const o = Array.isArray(data.output) ? data.output[0] : data.output;
+        const o = getLatestInvestorOutput(data.output);
 
         return {
           name: stock.name,
