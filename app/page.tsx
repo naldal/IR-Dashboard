@@ -1,51 +1,85 @@
 "use client";
 import React, { useRef, useState, useEffect, useSyncExternalStore } from 'react';
 import {
-  AreaChart, Area, BarChart, Bar,
+  ComposedChart, LineChart, Line, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer, Cell, ReferenceLine
+  ResponsiveContainer
 } from 'recharts';
-import type { BaseTickContentProps, CartesianTickItem, DotItemDotProps } from 'recharts';
 import { ArrowUpRight, ArrowDownRight, DollarSign, Activity, BarChart3, Sun, Moon } from 'lucide-react';
 import { useStockData } from '@/hooks/useStockData';
 
 const CHART_HEIGHT = 280;
 const MOBILE_CHART_HEIGHT = 360;
-const COMPANY_CHART_BREAKPOINT = 2000;
 const VALUE_ROLL_DURATION_MS = 280;
 const DARK_MODE_STORAGE_KEY = 'darkMode';
 const DARK_MODE_EVENT = 'dark-mode-change';
+const CHART_LABELS = ['D-9', 'D-8', 'D-7', 'D-6', 'D-5', 'D-4', 'D-3', 'D-2', 'D-1', 'Today'];
 
-type AxisTickProps = BaseTickContentProps & {
-  payload?: CartesianTickItem;
-  dark: boolean;
-};
+const investorTrendData = CHART_LABELS.map((label, index) => ({
+  label,
+  거래량: [9.9862, 20.2169, 14.3635, 23.1169, 40.6773, 31.6632, 16.3167, 13.5748, 13.8554, 15.2203][index],
+  기관순매매: [-0.9727, -1.1871, 1.8018, -1.192, 1.6217, 4.2783, 0.94, 0.8432, -3.5289, -5.1536][index],
+  외국인순매매: [0.0244, -2.2728, -1.4905, -1.4176, 0.4287, -3.2832, 0.1248, 2.3404, -1.215, -2.0465][index],
+}));
+
+const gameTop10IndexData = CHART_LABELS.map((label, index) => ({
+  label,
+  코스피: [5.58, 5.58, 4.58, -2.66, -14.72, -5.09, -5.07, -11.03, -5.68, -4.28][index],
+  코스닥: [1.99, 1.99, 2.38, -2.24, -16.24, -2.14, 1.29, -3.25, -0.04, -0.11][index],
+  'KRX 게임 TOP 10 지수': [-2, -2, -2.95, -5.08, -15.82, -11.11, -5.24, -3.94, -2.05, -6.05][index],
+}));
+
+const majorGameIndustryData = CHART_LABELS.map((label, index) => ({
+  label,
+  위메이드: [-13.6067, -13.6067, -13.8289, -11.4428, -10.7962, -9.9415, -13.0252, -21.1204, -6.1407, -2.1654][index],
+  크래프톤: [-10.3156, -10.3156, -9.6563, -5.6478, -14.1147, -10.7961, -13.5234, -17.7888, -7.1955, -0.216][index],
+  엔씨소프트: [-7.6742, -7.6742, -8.6266, -4.2985, -7.1088, -6.6426, -11.5326, -16.0827, -5.1943, -3.1308][index],
+  넷마블: [-0.9248, -0.9248, -2.2658, 3.169, 3.169, 0.9468, -10.3934, -16.4043, -5.4121, 4.6875][index],
+  펄어비스: [18.4692, 18.4692, 20.5865, 25.3927, 27.8133, 15.3983, 8.2945, 6.6278, 16.6278, -2.4133][index],
+  시프트업: [-6.2553, -6.2553, -5.1335, -6.928, -6.7651, -4.071, -8.5412, -15.6334, -6.8955, -2.7523][index],
+  더블유게임즈: [-7.6035, -7.6035, -8.6096, -9.6258, -10.4455, -8.0455, -9.5683, -13.691, -4.8278, -1.1407][index],
+  넥슨게임즈: [-7.0632, -7.0632, -8.4508, -6.3674, -5.4698, -5.2012, -5.6508, -12.1643, -1.855, 0][index],
+}));
+
+const kosdaqSectorData = CHART_LABELS.map((label, index) => ({
+  label,
+  게임: [-2, -2, -3, -5, -16, -11, -5, -4, -2, -6][index],
+  엔터: [-2, -2, -1, -8, -18, -13, -8, -12, -10, -11][index],
+  바이오: [-1, -1, -1, -7, -19, -10, -10, -13, -11, -11][index],
+  '2차전지': [2, 2, 3, -4, -19, -8, -6, -11, -9, -9][index],
+}));
+
+const majorIndustrySeries = [
+  { key: '위메이드', color: '#ef4444' },
+  { key: '크래프톤', color: '#f97316' },
+  { key: '엔씨소프트', color: '#10b981' },
+  { key: '넷마블', color: '#14b8a6' },
+  { key: '펄어비스', color: '#8b5cf6' },
+  { key: '시프트업', color: '#ec4899' },
+  { key: '더블유게임즈', color: '#06b6d4' },
+  { key: '넥슨게임즈', color: '#64748b' },
+] as const;
+
+const kosdaqSectorSeries = [
+  { key: '게임', color: '#ef4444' },
+  { key: '엔터', color: '#f59e0b' },
+  { key: '바이오', color: '#10b981' },
+  { key: '2차전지', color: '#3b82f6' },
+] as const;
 
 interface TooltipEntry {
   color?: string;
   fill?: string;
-  name?: string;
-  value?: number | string | null;
+  name?: string | number;
+  value?: number | string | ReadonlyArray<number | string> | null;
 }
 
 interface ChartTooltipProps {
   active?: boolean;
-  payload?: TooltipEntry[];
+  payload?: readonly TooltipEntry[];
   label?: string;
-  valueFormatter?: (value: number) => string;
+  valueFormatter?: (value: number, name?: string) => string;
   dark: boolean;
-}
-
-type LiveDotProps = DotItemDotProps;
-
-interface ChartLoadingCardProps {
-  title: string;
-  subtitle: string;
-  dark: boolean;
-  delay: number;
-  height: number;
-  accent: 'red' | 'blue' | 'amber';
-  variant: 'area' | 'bar';
 }
 
 function subscribeDarkMode(onStoreChange: () => void) {
@@ -70,49 +104,21 @@ function getDarkModeSnapshot() {
   return localStorage.getItem(DARK_MODE_STORAGE_KEY) === 'true';
 }
 
-function formatTooltipValue(value: TooltipEntry['value'], valueFormatter?: (value: number) => string) {
+function formatTooltipValue(
+  value: TooltipEntry['value'],
+  name?: string,
+  valueFormatter?: (value: number, name?: string) => string,
+) {
   if (typeof value === 'number') {
-    return valueFormatter ? valueFormatter(value) : value.toLocaleString();
+    return valueFormatter ? valueFormatter(value, name) : value.toLocaleString();
+  }
+
+  if (Array.isArray(value)) {
+    return value.join(', ');
   }
 
   return value ?? '-';
 }
-
-// 세로 바 차트용 X축 레이블 (회전)
-const GameTick = ({ x = 0, y = 0, payload, dark }: AxisTickProps) => {
-  const label = payload?.value ?? '';
-
-  return (
-    <text
-      x={x} y={y}
-      textAnchor="end"
-      transform={`rotate(-35, ${x}, ${y})`}
-      fill={label === '위메이드' ? (dark ? '#f1f5f9' : '#111827') : (dark ? '#64748b' : '#6b7280')}
-      fontSize={13}
-      fontWeight={label === '위메이드' ? 800 : 600}
-    >
-      {label}
-    </text>
-  );
-};
-
-// 가로 바 차트용 Y축 레이블
-const HorizontalGameTick = ({ x = 0, y = 0, payload, dark }: AxisTickProps) => {
-  const label = payload?.value ?? '';
-
-  return (
-    <text
-      x={x} y={y}
-      textAnchor="end"
-      dominantBaseline="middle"
-      fill={label === '위메이드' ? (dark ? '#f1f5f9' : '#111827') : (dark ? '#64748b' : '#6b7280')}
-      fontSize={12}
-      fontWeight={label === '위메이드' ? 800 : 500}
-    >
-      {label}
-    </text>
-  );
-};
 
 const ChartTooltip = ({ active, payload, label, valueFormatter, dark }: ChartTooltipProps) => {
   if (!active || !payload?.length) return null;
@@ -127,12 +133,12 @@ const ChartTooltip = ({ active, payload, label, valueFormatter, dark }: ChartToo
       color: dark ? '#e2e8f0' : '#111827',
     }}>
       <p style={{ color: dark ? '#94a3b8' : '#4b5563', fontSize: 14, marginBottom: 8, fontWeight: 700 }}>{label ?? ''}</p>
-      {payload.map((entry, i) => (
+      {payload.map((entry: TooltipEntry, i: number) => (
         <p
           key={`${entry.name ?? 'tooltip'}-${i}`}
           style={{ color: entry.color ?? entry.fill ?? (dark ? '#e2e8f0' : '#111827'), fontWeight: 800, margin: '4px 0' }}
         >
-          {entry.name}: {formatTooltipValue(entry.value, valueFormatter)}
+          {entry.name}: {formatTooltipValue(entry.value, String(entry.name ?? ''), valueFormatter)}
         </p>
       ))}
     </div>
@@ -142,6 +148,14 @@ const ChartTooltip = ({ active, payload, label, valueFormatter, dark }: ChartToo
 function isUp(changeRate: string): boolean {
   const n = parseFloat(changeRate);
   return !isNaN(n) && n >= 0;
+}
+
+function formatNumber(value: number, maximumFractionDigits = 2) {
+  return new Intl.NumberFormat('ko-KR', { maximumFractionDigits }).format(value);
+}
+
+function formatSignedNumber(value: number, maximumFractionDigits = 2) {
+  return `${value > 0 ? '+' : ''}${formatNumber(value, maximumFractionDigits)}`;
 }
 
 function parseNumericText(value: string): number | null {
@@ -304,142 +318,12 @@ function StatCard({ title, value, change, icon: Icon, up, isLoading, delay, dark
   );
 }
 
-function ChartLoadingCard({ title, subtitle, dark, delay, height, accent, variant }: ChartLoadingCardProps) {
-  const accentStyles = {
-    red: {
-      stroke: '#ef4444',
-      fill: dark ? 'rgba(239,68,68,0.18)' : 'rgba(239,68,68,0.14)',
-      badge: dark ? 'bg-red-400/10 text-red-200' : 'bg-red-50 text-red-600',
-      dot: dark ? 'bg-red-300' : 'bg-red-500',
-    },
-    blue: {
-      stroke: '#3b82f6',
-      fill: dark ? 'rgba(59,130,246,0.18)' : 'rgba(59,130,246,0.14)',
-      badge: dark ? 'bg-sky-400/10 text-sky-200' : 'bg-sky-50 text-sky-700',
-      dot: dark ? 'bg-sky-300' : 'bg-sky-500',
-    },
-    amber: {
-      stroke: '#f59e0b',
-      fill: dark ? 'rgba(245,158,11,0.18)' : 'rgba(245,158,11,0.14)',
-      badge: dark ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50 text-amber-700',
-      dot: dark ? 'bg-amber-300' : 'bg-amber-500',
-    },
-  } as const;
-  const accentStyle = accentStyles[accent];
-  const gradientId = `chart-loading-${accent}-${delay}`;
-  const barHeights = [28, 42, 34, 58, 46, 72, 54, 66];
-
-  return (
-    <div
-      className={`chart-enter relative overflow-hidden p-7 rounded-2xl shadow-md border transition-colors duration-300 ${
-        dark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'
-      }`}
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <div
-        className={`card-loading-sheen pointer-events-none absolute inset-0 ${
-          dark
-            ? 'bg-[linear-gradient(110deg,transparent,rgba(148,163,184,0.08),transparent)]'
-            : 'bg-[linear-gradient(110deg,transparent,rgba(59,130,246,0.09),transparent)]'
-        }`}
-      />
-
-      <div className="relative">
-        <h3 className={`text-xl font-bold tracking-tight mb-2 transition-colors duration-300 ${dark ? 'text-slate-100' : 'text-gray-800'}`}>{title}</h3>
-        <p className={`text-sm font-medium mb-6 transition-colors duration-300 ${dark ? 'text-slate-500' : 'text-gray-400'}`}>{subtitle}</p>
-
-        <div
-          className={`relative overflow-hidden rounded-2xl border ${
-            dark ? 'border-slate-700 bg-slate-900/60' : 'border-gray-200 bg-gray-50/90'
-          }`}
-          style={{ height }}
-        >
-          <div className="absolute inset-0 flex flex-col justify-between px-6 py-6">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <div
-                key={`grid-row-${index}`}
-                className={`h-px w-full ${dark ? 'bg-slate-800/90' : 'bg-gray-200'}`}
-              />
-            ))}
-          </div>
-          <div className="absolute inset-0 flex justify-between px-8 py-6">
-            {Array.from({ length: 5 }).map((_, index) => (
-              <div
-                key={`grid-col-${index}`}
-                className={`h-full w-px ${dark ? 'bg-slate-800/60' : 'bg-gray-200/80'}`}
-              />
-            ))}
-          </div>
-
-          {variant === 'area' ? (
-            <svg viewBox="0 0 520 260" className="absolute inset-0 h-full w-full">
-              <defs>
-                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={accentStyle.fill} />
-                  <stop offset="100%" stopColor="transparent" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M 28 174 C 74 146, 116 186, 164 132 S 254 90, 320 106 S 432 154, 492 74 L 492 220 L 28 220 Z"
-                fill={`url(#${gradientId})`}
-                className="chart-loading-wave"
-                style={{ animationDelay: `${delay + 40}ms` }}
-              />
-              <path
-                d="M 28 174 C 74 146, 116 186, 164 132 S 254 90, 320 106 S 432 154, 492 74"
-                fill="none"
-                stroke={accentStyle.stroke}
-                strokeWidth="4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="chart-loading-wave"
-                style={{ animationDelay: `${delay + 120}ms` }}
-              />
-            </svg>
-          ) : (
-            <div className="absolute inset-x-6 bottom-10 top-8 flex items-end justify-between gap-3">
-              {barHeights.map((barHeight, index) => (
-                <div
-                  key={`bar-skeleton-${index}`}
-                  className="chart-loading-column rounded-t-xl"
-                  style={{
-                    height: `${barHeight}%`,
-                    width: `${100 / (barHeights.length + 2)}%`,
-                    background: accentStyle.fill,
-                    animationDelay: `${delay + index * 90}ms`,
-                  }}
-                />
-              ))}
-            </div>
-          )}
-
-          <div className={`absolute inset-x-6 bottom-4 flex items-center justify-between text-[10px] font-semibold tracking-[0.08em] ${dark ? 'text-slate-500' : 'text-gray-400'}`}>
-            <span>09:00</span>
-            <span>12:00</span>
-            <span>15:30</span>
-          </div>
-        </div>
-
-        <div className={`mt-4 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold ${accentStyle.badge}`}>
-          <span className={`h-2 w-2 rounded-full ${accentStyle.dot} animate-pulse`} />
-          실시간 차트 준비 중
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function Dashboard() {
   const stock = useStockData();
   const dark = useSyncExternalStore(subscribeDarkMode, getDarkModeSnapshot, () => false);
   const [currentTime, setCurrentTime] = useState('');
   const windowWidth = useWindowWidth();
-  const useHorizontalCompanyCharts = windowWidth !== null && windowWidth <= COMPANY_CHART_BREAKPOINT;
-  const sectorHorizontalHeight = Math.max(MOBILE_CHART_HEIGHT, stock.sectorData.length * 42 + 28);
-  const investorHorizontalHeight = Math.max(MOBILE_CHART_HEIGHT, stock.investorData.length * 56 + 28);
-  const chartLoadingHeight = useHorizontalCompanyCharts ? MOBILE_CHART_HEIGHT : CHART_HEIGHT;
-  const lastMarketCapIndex = stock.chartHistory.findLastIndex((point) => point.시가총액 !== null);
-  const lastVolumeIndex = stock.chartHistory.findLastIndex((point) => point.거래량 !== null);
+  const isCompactChart = windowWidth !== null && windowWidth < 768;
 
   useEffect(() => {
     const tick = () => setCurrentTime(new Date().toLocaleTimeString('ko-KR'));
@@ -457,8 +341,8 @@ export default function Dashboard() {
   const axisStyle = { fontSize: 14, fill: dark ? '#64748b' : '#6b7280', fontWeight: 600 };
   const mobileAxisStyle = { fontSize: 12, fill: dark ? '#64748b' : '#6b7280', fontWeight: 600 };
   const gridStyle = { stroke: dark ? '#1e293b' : '#e5e7eb', strokeDasharray: '4 4' };
-  const refLineColor = dark ? '#475569' : '#9ca3af';
-  const cursorFill = dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
+  const tooltipCursor = { stroke: dark ? '#475569' : '#cbd5e1', strokeDasharray: '4 4' };
+  const chartHeight = isCompactChart ? MOBILE_CHART_HEIGHT : CHART_HEIGHT;
 
   const priceUp = isUp(stock.changeRate);
   const marketCapUp = isUp(stock.marketCapChange);
@@ -509,6 +393,21 @@ export default function Dashboard() {
   const chartCard = `p-7 rounded-2xl shadow-md border transition-colors duration-300 ${dark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`;
   const chartTitle = `text-xl font-bold tracking-tight mb-2 transition-colors duration-300 ${dark ? 'text-slate-100' : 'text-gray-800'}`;
   const chartSub = `text-sm font-medium mb-6 transition-colors duration-300 ${dark ? 'text-slate-500' : 'text-gray-400'}`;
+  const chartAxisStyle = isCompactChart ? mobileAxisStyle : axisStyle;
+  const sharedXAxisProps = {
+    dataKey: 'label',
+    tick: chartAxisStyle,
+    axisLine: false,
+    tickLine: false,
+    interval: 0 as const,
+    height: isCompactChart ? 56 : 30,
+    angle: isCompactChart ? -35 : 0,
+    textAnchor: isCompactChart ? 'end' as const : 'middle' as const,
+    tickMargin: isCompactChart ? 12 : 8,
+  };
+  const legendFormatter = (value: string) => (
+    <span style={{ color: dark ? '#94a3b8' : '#4b5563', fontWeight: 700 }}>{value}</span>
+  );
 
   return (
     <div className={`min-h-screen p-6 md:p-10 font-sans transition-colors duration-300 ${dark ? 'bg-slate-950' : 'bg-gray-50'}`}>
@@ -592,224 +491,133 @@ export default function Dashboard() {
 
       {/* 2x2 차트 그리드 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {stock.isChartLoading ? (
-          <>
-            <ChartLoadingCard
-              title="시가총액 추이"
-              subtitle="단위: 억원"
-              dark={dark}
-              delay={0}
-              height={chartLoadingHeight}
-              accent="red"
-              variant="area"
-            />
-            <ChartLoadingCard
-              title="거래량 추이"
-              subtitle="단위: 주 (구간 합산)"
-              dark={dark}
-              delay={100}
-              height={chartLoadingHeight}
-              accent="blue"
-              variant="area"
-            />
-            <ChartLoadingCard
-              title="주요 게임사 등락률"
-              subtitle="단위: %"
-              dark={dark}
-              delay={200}
-              height={chartLoadingHeight}
-              accent="amber"
-              variant="bar"
-            />
-            <ChartLoadingCard
-              title="투자자별 순매매 동향"
-              subtitle="단위: 백만원"
-              dark={dark}
-              delay={300}
-              height={chartLoadingHeight}
-              accent="blue"
-              variant="bar"
-            />
-          </>
-        ) : (
-          <>
-            {/* 1. 시총 차트 */}
-            <div className={`chart-enter ${chartCard}`} style={{ animationDelay: '0ms' }}>
-              <h3 className={chartTitle}>시가총액 추이</h3>
-              <p className={chartSub}>단위: 억원</p>
-              <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                <AreaChart data={stock.chartHistory} margin={{ top: 10, right: 28, left: 10, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="gradMarketCap" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid {...gridStyle} vertical={false} />
-                  <XAxis dataKey="time" tick={axisStyle} axisLine={false} tickLine={false} dy={10} padding={{ left: 20, right: 20 }} />
-                  <YAxis domain={['auto', 'auto']} tick={axisStyle} axisLine={false} tickLine={false} width={65} tickFormatter={v => v.toLocaleString()} />
-                  <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v.toLocaleString()}억`} />} cursor={{ stroke: '#ef4444', strokeWidth: 2, strokeDasharray: '4 4' }} />
-                  <Area type="monotone" dataKey="시가총액" stroke="#ef4444" strokeWidth={3} fill="url(#gradMarketCap)" connectNulls={false}
-                    dot={(props: LiveDotProps) => {
-                      const key = props.key ?? `market-cap-dot-${props.index ?? 'empty'}`;
-
-                      if (props.value == null || props.cx == null || props.cy == null) return <g key={key} />;
-                      if (!stock.isMarketOpen) return <g key={key} />;
-                      if (props.index !== lastMarketCapIndex) return <g key={key} />;
-                      return (
-                        <g key={key}>
-                          <circle cx={props.cx} cy={props.cy} r={9} fill="#ef4444" className="live-dot-pulse" />
-                          <circle cx={props.cx} cy={props.cy} r={5} fill="#ef4444" stroke={dark ? '#1e293b' : 'white'} strokeWidth={2} />
-                        </g>
-                      );
-                    }}
-                    activeDot={{ r: 6, fill: '#ef4444', strokeWidth: 3, stroke: dark ? '#1e293b' : 'white' }}
+        <div className={`chart-enter ${chartCard}`} style={{ animationDelay: '0ms' }}>
+          <h3 className={chartTitle}>위메이드 투자자별 순매매 동향</h3>
+          <p className={chartSub}>거래량(막대) · 기관/외국인 순매매(선)</p>
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <ComposedChart data={investorTrendData} margin={{ top: 10, right: 8, left: -12, bottom: 0 }}>
+              <CartesianGrid {...gridStyle} vertical={false} />
+              <XAxis {...sharedXAxisProps} />
+              <YAxis
+                yAxisId="volume"
+                tick={chartAxisStyle}
+                axisLine={false}
+                tickLine={false}
+                width={isCompactChart ? 40 : 48}
+                tickFormatter={(value: number) => formatNumber(value, 0)}
+              />
+              <YAxis
+                yAxisId="trade"
+                orientation="right"
+                tick={chartAxisStyle}
+                axisLine={false}
+                tickLine={false}
+                width={isCompactChart ? 40 : 52}
+                tickFormatter={(value: number) => formatSignedNumber(value, 0)}
+              />
+              <Tooltip
+                content={
+                  <ChartTooltip
+                    dark={dark}
+                    valueFormatter={(value, name) => (
+                      name === '거래량' ? formatNumber(value, 4) : formatSignedNumber(value, 4)
+                    )}
                   />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+                }
+                cursor={tooltipCursor}
+              />
+              <Legend wrapperStyle={{ fontSize: 12, paddingTop: 12, lineHeight: '24px' }} formatter={legendFormatter} />
+              <Bar yAxisId="volume" dataKey="거래량" fill="#94a3b8" fillOpacity={0.95} radius={[4, 4, 0, 0]} barSize={isCompactChart ? 14 : 18} />
+              <Line yAxisId="trade" type="monotone" dataKey="기관순매매" stroke="#3b82f6" strokeWidth={3} dot={false} activeDot={{ r: 5 }} />
+              <Line yAxisId="trade" type="monotone" dataKey="외국인순매매" stroke="#ef4444" strokeWidth={3} dot={false} activeDot={{ r: 5 }} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
 
-            {/* 2. 거래량 차트 */}
-            <div className={`chart-enter ${chartCard}`} style={{ animationDelay: '100ms' }}>
-              <h3 className={chartTitle}>거래량 추이</h3>
-              <p className={chartSub}>단위: 주 (구간 합산)</p>
-              <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                <AreaChart data={stock.chartHistory} margin={{ top: 10, right: 28, left: 10, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="gradVolume" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid {...gridStyle} vertical={false} />
-                  <XAxis dataKey="time" tick={axisStyle} axisLine={false} tickLine={false} dy={10} padding={{ left: 20, right: 20 }} />
-                  <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={65} tickFormatter={v => v >= 10000 ? `${(v / 10000).toFixed(0)}만` : v} />
-                  <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v.toLocaleString()}주`} />} cursor={{ stroke: '#3b82f6', strokeWidth: 2, strokeDasharray: '4 4' }} />
-                  <Area type="monotone" dataKey="거래량" stroke="#3b82f6" strokeWidth={3} fill="url(#gradVolume)" connectNulls={false}
-                    dot={(props: LiveDotProps) => {
-                      const key = props.key ?? `volume-dot-${props.index ?? 'empty'}`;
+        <div className={`chart-enter ${chartCard}`} style={{ animationDelay: '100ms' }}>
+          <h3 className={chartTitle}>게임TOP10지수 누적 등락률 (vs. 국내 증시)</h3>
+          <p className={chartSub}>단위: %</p>
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <LineChart data={gameTop10IndexData} margin={{ top: 10, right: 8, left: -12, bottom: 0 }}>
+              <CartesianGrid {...gridStyle} vertical={false} />
+              <XAxis {...sharedXAxisProps} />
+              <YAxis
+                tick={chartAxisStyle}
+                axisLine={false}
+                tickLine={false}
+                width={isCompactChart ? 40 : 48}
+                tickFormatter={(value: number) => formatSignedNumber(value, 0)}
+              />
+              <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(value) => `${formatSignedNumber(value, 4)}%`} />} cursor={tooltipCursor} />
+              <Legend wrapperStyle={{ fontSize: 12, paddingTop: 12, lineHeight: '24px' }} formatter={legendFormatter} />
+              <Line type="monotone" dataKey="코스피" stroke="#64748b" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
+              <Line type="monotone" dataKey="코스닥" stroke="#f59e0b" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
+              <Line type="monotone" dataKey="KRX 게임 TOP 10 지수" stroke="#ef4444" strokeWidth={3} dot={false} activeDot={{ r: 5 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
 
-                      if (props.value == null || props.cx == null || props.cy == null) return <g key={key} />;
-                      if (!stock.isMarketOpen) return <g key={key} />;
-                      if (props.index !== lastVolumeIndex) return <g key={key} />;
-                      return (
-                        <g key={key}>
-                          <circle cx={props.cx} cy={props.cy} r={9} fill="#3b82f6" className="live-dot-pulse" />
-                          <circle cx={props.cx} cy={props.cy} r={5} fill="#3b82f6" stroke={dark ? '#1e293b' : 'white'} strokeWidth={2} />
-                        </g>
-                      );
-                    }}
-                    activeDot={{ r: 6, fill: '#3b82f6', strokeWidth: 3, stroke: dark ? '#1e293b' : 'white' }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+        <div className={`chart-enter ${chartCard}`} style={{ animationDelay: '200ms' }}>
+          <h3 className={chartTitle}>주요 게임업종 누적 등락률</h3>
+          <p className={chartSub}>단위: %</p>
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <LineChart data={majorGameIndustryData} margin={{ top: 10, right: 8, left: -12, bottom: 0 }}>
+              <CartesianGrid {...gridStyle} vertical={false} />
+              <XAxis {...sharedXAxisProps} />
+              <YAxis
+                tick={chartAxisStyle}
+                axisLine={false}
+                tickLine={false}
+                width={isCompactChart ? 40 : 48}
+                tickFormatter={(value: number) => formatSignedNumber(value, 0)}
+              />
+              <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(value) => `${formatSignedNumber(value, 4)}%`} />} cursor={tooltipCursor} />
+              <Legend wrapperStyle={{ fontSize: 12, paddingTop: 12, lineHeight: '24px' }} formatter={legendFormatter} />
+              {majorIndustrySeries.map((series) => (
+                <Line
+                  key={series.key}
+                  type="monotone"
+                  dataKey={series.key}
+                  stroke={series.color}
+                  strokeWidth={series.key === '위메이드' ? 3 : 2.5}
+                  dot={false}
+                  activeDot={{ r: 5 }}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
 
-            {/* 3. 등락률 */}
-            <div className={`chart-enter ${chartCard}`} style={{ animationDelay: '200ms' }}>
-              <h3 className={chartTitle}>주요 게임사 등락률</h3>
-              <p className={chartSub}>단위: %</p>
-              <ResponsiveContainer width="100%" height={useHorizontalCompanyCharts ? sectorHorizontalHeight : CHART_HEIGHT}>
-                {useHorizontalCompanyCharts ? (
-                  /* 가로 바 차트: 회사명 고정 노출 */
-                  <BarChart layout="vertical" data={stock.sectorData} margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
-                    <CartesianGrid {...gridStyle} horizontal={false} />
-                    <XAxis type="number" tick={mobileAxisStyle} axisLine={false} tickLine={false} tickFormatter={v => `${v > 0 ? '+' : ''}${v}`} />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      tick={(props) => <HorizontalGameTick {...props} dark={dark} />}
-                      axisLine={false}
-                      tickLine={false}
-                      interval={0}
-                      width={96}
-                    />
-                    <ReferenceLine x={0} stroke={refLineColor} strokeWidth={2} />
-                    <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v > 0 ? '+' : ''}${v}%`} />} cursor={{ fill: cursorFill }} />
-                    <Bar dataKey="등락률" radius={[0, 3, 3, 0]}>
-                      {stock.sectorData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.등락률 >= 0 ? '#ef4444' : '#3b82f6'} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                ) : (
-                  /* 데스크톱: 세로 바 차트 (회사명 X축 회전) */
-                  <BarChart data={stock.sectorData} margin={{ top: 10, right: 10, left: 20, bottom: 0 }} barCategoryGap="25%">
-                    <CartesianGrid {...gridStyle} vertical={false} />
-                    <XAxis
-                      dataKey="name"
-                      tick={(props) => <GameTick {...props} dark={dark} />}
-                      axisLine={false}
-                      tickLine={false}
-                      interval={0}
-                      minTickGap={0}
-                      height={65}
-                    />
-                    <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={45} tickFormatter={v => `${v > 0 ? '+' : ''}${v}`} />
-                    <ReferenceLine y={0} stroke={refLineColor} strokeWidth={2} />
-                    <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v > 0 ? '+' : ''}${v}%`} />} cursor={{ fill: cursorFill }} />
-                    <Bar dataKey="등락률">
-                      {stock.sectorData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.등락률 >= 0 ? '#ef4444' : '#3b82f6'} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                )}
-              </ResponsiveContainer>
-            </div>
-
-            {/* 4. 투자자별 순매매 */}
-            <div className={`chart-enter ${chartCard}`} style={{ animationDelay: '300ms' }}>
-              <h3 className={chartTitle}>투자자별 순매매 동향</h3>
-              <p className={chartSub}>단위: 백만원</p>
-              <ResponsiveContainer width="100%" height={useHorizontalCompanyCharts ? investorHorizontalHeight : CHART_HEIGHT}>
-                {useHorizontalCompanyCharts ? (
-                  /* 가로 바 차트: 회사명 고정 노출 */
-                  <BarChart layout="vertical" data={stock.investorData} margin={{ top: 0, right: 20, left: 0, bottom: 0 }} barCategoryGap="20%">
-                    <CartesianGrid {...gridStyle} horizontal={false} />
-                    <XAxis type="number" tick={mobileAxisStyle} axisLine={false} tickLine={false} tickFormatter={v => Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}B` : String(v)} />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      tick={(props) => <HorizontalGameTick {...props} dark={dark} />}
-                      axisLine={false}
-                      tickLine={false}
-                      interval={0}
-                      width={96}
-                    />
-                    <ReferenceLine x={0} stroke={refLineColor} strokeWidth={2} />
-                    <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v.toLocaleString()}백만`} />} cursor={{ fill: cursorFill }} />
-                    <Legend wrapperStyle={{ fontSize: 13, paddingTop: 10 }} formatter={(value) => <span style={{ color: dark ? '#94a3b8' : '#4b5563', fontWeight: 700 }}>{value}</span>} />
-                    <Bar dataKey="외국인" fill="#ef4444" fillOpacity={0.9} radius={[0, 3, 3, 0]} />
-                    <Bar dataKey="기관" fill="#f59e0b" fillOpacity={0.9} radius={[0, 3, 3, 0]} />
-                    <Bar dataKey="개인" fill="#3b82f6" fillOpacity={0.9} radius={[0, 3, 3, 0]} />
-                  </BarChart>
-                ) : (
-                  /* 데스크톱: 세로 바 차트 (회사명 X축 회전) */
-                  <BarChart data={stock.investorData} margin={{ top: 10, right: 10, left: 20, bottom: 0 }} barCategoryGap="20%">
-                    <CartesianGrid {...gridStyle} vertical={false} />
-                    <XAxis
-                      dataKey="name"
-                      tick={(props) => <GameTick {...props} dark={dark} />}
-                      axisLine={false}
-                      tickLine={false}
-                      interval={0}
-                      minTickGap={0}
-                      height={65}
-                    />
-                    <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={65} tickFormatter={v => Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}B` : String(v)} />
-                    <ReferenceLine y={0} stroke={refLineColor} strokeWidth={2} />
-                    <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(v: number) => `${v.toLocaleString()}백만`} />} cursor={{ fill: cursorFill }} />
-                    <Legend wrapperStyle={{ fontSize: 14, paddingTop: 15 }} formatter={(value) => <span style={{ color: dark ? '#94a3b8' : '#4b5563', fontWeight: 700 }}>{value}</span>} />
-                    <Bar dataKey="외국인" fill="#ef4444" fillOpacity={0.9} />
-                    <Bar dataKey="기관" fill="#f59e0b" fillOpacity={0.9} />
-                    <Bar dataKey="개인" fill="#3b82f6" fillOpacity={0.9} />
-                  </BarChart>
-                )}
-              </ResponsiveContainer>
-            </div>
-          </>
-        )}
+        <div className={`chart-enter ${chartCard}`} style={{ animationDelay: '300ms' }}>
+          <h3 className={chartTitle}>KOSDAQ 업종별 누적 등락률(vs. 게임)</h3>
+          <p className={chartSub}>단위: %</p>
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <LineChart data={kosdaqSectorData} margin={{ top: 10, right: 8, left: -12, bottom: 0 }}>
+              <CartesianGrid {...gridStyle} vertical={false} />
+              <XAxis {...sharedXAxisProps} />
+              <YAxis
+                tick={chartAxisStyle}
+                axisLine={false}
+                tickLine={false}
+                width={isCompactChart ? 40 : 48}
+                tickFormatter={(value: number) => formatSignedNumber(value, 0)}
+              />
+              <Tooltip content={<ChartTooltip dark={dark} valueFormatter={(value) => `${formatSignedNumber(value, 4)}%`} />} cursor={tooltipCursor} />
+              <Legend wrapperStyle={{ fontSize: 12, paddingTop: 12, lineHeight: '24px' }} formatter={legendFormatter} />
+              {kosdaqSectorSeries.map((series) => (
+                <Line
+                  key={series.key}
+                  type="monotone"
+                  dataKey={series.key}
+                  stroke={series.color}
+                  strokeWidth={series.key === '게임' ? 3 : 2.5}
+                  dot={false}
+                  activeDot={{ r: 5 }}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       <p className={`mt-10 text-center text-xs transition-colors duration-300 ${dark ? 'text-slate-700' : 'text-gray-400'}`}>Powered by 위메이드 송하민 대리</p>
