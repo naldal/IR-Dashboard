@@ -620,7 +620,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <p className={`mt-10 text-center text-xs transition-colors duration-300 ${dark ? 'text-slate-700' : 'text-gray-400'}`}>Powered by 위메이드 송하민 대리</p>
     </div>
   );
 }
