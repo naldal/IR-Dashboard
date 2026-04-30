@@ -1,37 +1,227 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# IR Dashboard
 
-## Getting Started
+위메이드 IR실이 **주가·시가총액·지수·환율·투자자 동향**을 한 화면에서 빠르게 확인할 수 있도록 만든 웹 대시보드입니다.
 
-First, run the development server:
+## 비전공자용 30초 요약
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+이 프로젝트는 크게 **3층 구조**로 되어 있습니다.
+
+1. **화면 층**: 브라우저에 보이는 카드와 차트를 그립니다.
+2. **정리 층**: 화면이 바로 외부 증권 API를 호출하지 않고, 프로젝트 안의 서버 API가 중간에서 데이터를 정리합니다.
+3. **데이터 공급 층**: 한국투자증권(KIS) API와 Yahoo Finance에서 실제 숫자를 가져옵니다.
+
+즉, 이 프로젝트는 **“외부에서 숫자를 받아 → 우리 형식으로 정리하고 → 보기 쉬운 화면으로 보여주는 웹 서비스”**입니다.
+
+---
+
+## 이 프로젝트를 한 장으로 이해하기
+
+```text
+사용자 브라우저
+   ↓
+app/page.tsx (메인 화면)
+   ↓
+hooks/useStockData.ts (데이터 요청/주기적 새로고침)
+   ↓
+app/api/stock/* (프로젝트 내부 서버 API)
+   ↓
+lib/kisToken.ts (KIS 인증 토큰 관리)
+   ↓
+외부 데이터 제공처
+- 한국투자증권 KIS Open API
+- Yahoo Finance (원/달러 환율)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 비유로 설명하면
+- `app/page.tsx` = **전광판**
+- `hooks/useStockData.ts` = **전광판에 올릴 숫자를 계속 확인하는 비서**
+- `app/api/stock/*` = **각 부서에서 숫자를 받아 종합하는 상황실**
+- `lib/kisToken.ts` = **외부 시스템 출입증(토큰) 관리실**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 폴더 구조와 역할
 
-## Learn More
+```text
+IR-Dashboard/
+├─ app/
+│  ├─ page.tsx                # 메인 대시보드 화면
+│  ├─ layout.tsx              # 공통 레이아웃 / 메타데이터
+│  ├─ globals.css             # 전체 스타일
+│  └─ api/stock/              # 프로젝트 내부 서버 API
+│     ├─ dashboard/route.ts   # 여러 데이터를 한 번에 모아주는 핵심 API
+│     ├─ exchange/route.ts    # 원/달러 환율
+│     ├─ price/route.ts       # 위메이드 주가
+│     ├─ index/route.ts       # KOSPI / KOSDAQ
+│     ├─ investor/route.ts    # 투자자별 순매매
+│     ├─ sector/route.ts      # 게임 섹터 종목 등락률
+│     └─ chart/route.ts       # 장중 시가총액/거래량 차트 데이터
+├─ hooks/
+│  └─ useStockData.ts         # 화면용 데이터 상태 관리 + 자동 새로고침
+├─ lib/
+│  ├─ kisToken.ts             # KIS 인증 토큰 발급 / 재사용 / 재발급
+│  └─ routeError.ts           # API 에러 응답 공통 처리
+├─ public/                    # 정적 파일
+├─ package.json               # 실행 스크립트 / 라이브러리 목록
+└─ README.md
+```
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 중요한 파일을 쉽게 설명하면
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| 파일 | 역할 | 비전공자 관점 설명 |
+| --- | --- | --- |
+| `app/page.tsx` | 메인 화면 | 사용자가 실제로 보는 대시보드 화면입니다. 카드, 차트, 다크모드 UI가 여기 있습니다. |
+| `hooks/useStockData.ts` | 데이터 흐름 제어 | “지금 어떤 숫자를 화면에 보여줄지”를 관리합니다. 처음 로딩, 주기적 새로고침, 장중 여부 판단도 여기서 합니다. |
+| `app/api/stock/dashboard/route.ts` | 핵심 종합 API | 여러 외부 데이터를 한 번에 모아 화면이 쓰기 쉬운 형태로 돌려주는 중심 역할입니다. |
+| `app/api/stock/*.ts` | 개별 API | 주가, 지수, 환율, 투자자 데이터처럼 기능별로 나뉜 작은 창구들입니다. |
+| `lib/kisToken.ts` | 인증/보안 | KIS API를 쓰려면 토큰이 필요한데, 이 파일이 토큰을 발급받고 저장하고 만료 시 재발급합니다. |
+| `lib/routeError.ts` | 예외 처리 | API 오류가 났을 때 같은 형식으로 에러를 반환하도록 맞춰줍니다. |
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 데이터가 실제로 움직이는 순서
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-# IR-Dashboard
+### 1) 사용자가 페이지를 열면
+- `app/page.tsx`가 화면을 띄웁니다.
+- 동시에 `useStockData()` 훅이 실행됩니다.
+
+### 2) 훅이 내부 API를 호출합니다
+- `/api/stock/dashboard` : 주가 + 지수 + 투자자 동향 + 섹터 + 차트 데이터
+- `/api/stock/exchange` : 원/달러 환율
+
+### 3) 내부 API가 외부 데이터를 가져옵니다
+- 국내 주식/지수/투자자 데이터는 **KIS Open API**에서 조회합니다.
+- 환율은 **Yahoo Finance**에서 가져옵니다.
+
+### 4) 서버가 데이터를 정리합니다
+- 외부 API 응답은 그대로 쓰기 어렵기 때문에,
+- 내부 API가 화면에서 쓰기 좋은 JSON 형태로 가공해서 반환합니다.
+
+### 5) 화면이 다시 그려집니다
+- `useStockData.ts`가 받은 데이터를 state에 저장합니다.
+- `app/page.tsx`는 그 state를 읽어서 카드와 차트를 갱신합니다.
+
+---
+
+## 왜 `/api`가 중간에 한 번 더 필요한가?
+
+비전공자에게 가장 중요한 포인트 중 하나입니다.
+
+브라우저가 KIS API를 직접 호출하지 않고, **프로젝트 내부의 `/api/...`를 거치는 이유**는 아래와 같습니다.
+
+1. **보안**: KIS 앱키/시크릿을 브라우저에 노출하면 안 됩니다.
+2. **정리**: 외부 데이터 형식이 제각각이어서, 화면에서 바로 쓰기 불편합니다.
+3. **재사용**: 여러 화면이 생겨도 같은 내부 API를 공통으로 쓸 수 있습니다.
+4. **장애 대응**: 토큰 만료, 응답 오류, 재시도 같은 처리를 한 곳에서 관리할 수 있습니다.
+
+즉, `/api`는 단순한 우회가 아니라 **보안 + 정리 + 안정성**을 위한 중간 계층입니다.
+
+---
+
+## 자동 새로고침 구조
+
+`hooks/useStockData.ts` 기준으로 현재 동작은 다음과 같습니다.
+
+- **처음 진입 시**: 전체 데이터 1회 로드
+- **장중일 때 10초마다**: 빠른 요약 데이터 재조회
+  - 위메이드 주가
+  - 시가총액
+  - KOSPI / KOSDAQ
+  - 환율
+- **5분마다**: 전체 데이터 백그라운드 갱신
+- **1분마다**: 한국 증시 장중 여부 재판단
+
+이 구조는 “자주 바뀌는 숫자는 자주 갱신하고, 무거운 데이터는 조금 덜 자주 갱신”하려는 설계입니다.
+
+---
+
+## 현재 화면 기준으로 보면
+
+### 실시간에 가까운 데이터
+상단 카드 5개는 `useStockData.ts`를 통해 실제 API 데이터를 받아 표시합니다.
+
+- 위메이드 주가
+- 시가총액
+- KOSPI
+- KOSDAQ
+- 원/달러 환율
+
+### 정적(하드코딩) 데이터
+하단 4개 비교 차트는 현재 `app/page.tsx` 안의 상수 데이터로 그려지고 있습니다.
+
+- 위메이드 투자자별 순매매 동향
+- 게임 TOP10 지수 vs 국내 증시
+- 주요 게임업종 누적 등락률
+- KOSDAQ 업종 비교
+
+즉, **데이터를 받아오는 기반은 이미 준비되어 있지만, 하단 차트는 아직 샘플/고정 데이터 중심으로 연결되어 있는 상태**입니다.
+
+참고로 `useStockData.ts` 안에는 이미 아래 상태가 준비되어 있습니다.
+
+- `chartHistory`
+- `sectorData`
+- `investorData`
+
+따라서 추후에는 이 값을 하단 차트에 연결해 **완전한 실시간 대시보드**로 확장하기 쉬운 구조입니다.
+
+---
+
+## 기술 스택을 쉬운 말로 설명하면
+
+| 기술 | 역할 | 쉬운 설명 |
+| --- | --- | --- |
+| Next.js | 프레임워크 | 화면과 서버 API를 한 프로젝트 안에서 같이 만들게 해주는 뼈대 |
+| React | UI 구성 | 화면을 컴포넌트 단위로 나눠서 만드는 방식 |
+| TypeScript | 타입 안정성 | 숫자/문자/데이터 구조 실수를 줄여주는 안전장치 |
+| Tailwind CSS | 스타일링 | 화면 디자인을 빠르게 적용하는 CSS 방식 |
+| Recharts | 차트 | 선 그래프, 막대 그래프를 그리는 라이브러리 |
+| Vercel Analytics | 방문 분석 | 배포 후 사용 현황을 볼 수 있는 도구 |
+
+---
+
+## 환경 변수 (외부 API 연결용)
+
+로컬 실행 또는 배포 시 아래 값이 필요합니다.
+
+```bash
+KIS_APP_KEY=...
+KIS_APP_SECRET=...
+KIS_BASE_URL=...
+```
+
+일반적으로 `.env.local` 파일에 넣어 사용합니다.
+
+```bash
+KIS_APP_KEY=your_app_key
+KIS_APP_SECRET=your_app_secret
+KIS_BASE_URL=https://openapi.koreainvestment.com:9443
+```
+
+---
+
+## 로컬에서 실행하는 방법
+
+이 저장소는 `package-lock.json`이 있으므로 **npm 기준**으로 실행하는 것이 가장 자연스럽습니다.
+
+```bash
+npm install
+npm run dev
+```
+
+브라우저에서 아래 주소를 열면 됩니다.
+
+```text
+http://localhost:3000
+```
+
+---
+
+## 발표/설명용 한 문장 버전
+
+> “이 프로젝트는 외부 금융 데이터를 내부 API에서 안전하게 정리한 뒤, Next.js 기반 화면에서 한눈에 보여주는 IR용 웹 대시보드입니다.”
+
+## 발표/설명용 조금 더 쉬운 버전
+
+> “증권사와 환율 서비스에서 숫자를 가져와서, 우리 서비스 안에서 정리하고, 최종적으로 한 화면 대시보드로 보여주는 구조입니다.”
